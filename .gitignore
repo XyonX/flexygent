@@ -1,0 +1,45 @@
+# Python virtual environment
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# macOS system files
+.DS_Store
+
+# VS Code settings
+.vscode/
+
+# Environment variables
+.env
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# ChromaDB local storage (if used)
+chroma_data/
+chromadb/
+
+# Test artifacts
+htmlcov/
+coverage.xml
+*.cover
+*.pytest_cache/
+
+# Jupyter/IPython
+.ipynb_checkpoints/
+
+# OS-specific
+Thumbs.db
+ehthumbs.db
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+
+# Notes and scratch files
+notes.txt
+*.bak

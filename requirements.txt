@@ -1,0 +1,26 @@
+# Core server and API framework
+fastapi
+uvicorn
+
+# OpenRouter-compatible LLM client
+openai>=1.0.0
+
+# Configuration and schema validation
+pydantic
+python-dotenv
+
+# Long-term memory via vector store
+chromadb
+
+# Async HTTP requests (for hosted tools or APIs)
+httpx
+
+# Optional: development and formatting tools
+black
+isort
+pytest
+ipython
+
+# Optional: embeddings and vector math (for RAG or semantic memory)
+sentence-transformers
+numpy
