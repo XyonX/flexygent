@@ -1,0 +1,10 @@
+llm:
+  openrouter:
+    api_key_env: OPENROUTER_API_KEY
+    base_url: https://openrouter.ai/api/v1
+    model: qwen/qwen3-coder:free
+    system_prompt: "You are a concise research assistant."
+    temperature: 0.2
+    request_timeout: 60.0
+    headers:
+      X-Title: "FlexyGent"
