@@ -59,3 +59,9 @@ def get_openrouter_cfg(cfg: Dict[str, Any]) -> Dict[str, Any]:
         return {}
     openrouter = llm.get("openrouter") or {}
     return openrouter if isinstance(openrouter, dict) else {}
+def get_llm_provider_cfg(cfg:Dict[str,Any], provider: str):
+    llm=cfg.get("llm") or {}
+    if not isinstance(llm, dict):
+        return {}
+    p = llm.get(provider) or {}
+    return p if isinstance(p,dict) else {}

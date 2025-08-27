@@ -51,6 +51,7 @@ class ResearchAgent(BaseAgent):
             "max_results": int(self.config.get("max_results", 5)),
             "safe": True,
         }
+        
         search_out = await search_tool(search_payload)
 
         if not search_out.items:
