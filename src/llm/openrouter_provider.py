@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
@@ -56,25 +56,15 @@ class OpenRouterProvider:
     def from_config(cls, cfg: Dict[str, object]) -> "OpenRouterProvider":
         """
         Build provider from a config dict (e.g., loaded from YAML).
-
-        Supported keys under cfg:
-          - api_key (NOT recommended in files) or api_key_env (env var name holding the key; default OPENROUTER_API_KEY)
-          - base_url
-          - model
-          - system_prompt
-          - temperature
-          - max_tokens
-          - request_timeout
-          - headers: { HTTP-Referer, X-Title }
         """
         api_key_env = str(cfg.get("api_key_env") or "OPENROUTER_API_KEY")
-        # Precedence: env first, then cfg["api_key"] as fallback
-        api_key = os.environ.get(api_key_env) or os.environ.get("OPENROUTER_API_KEY") or (cfg.get("api_key") or None)  # type: ignore
-
-        base_url = str(
-            os.environ.get("OPENROUTER_BASE_URL")
-            or (cfg.get("base_url") or "https://openrouter.ai/api/v1")
+        api_key = (
+            os.environ.get(api_key_env)
+            or os.environ.get("OPENROUTER_API_KEY")
+            or (cfg.get("api_key") or None)  # type: ignore
         )
+
+        base_url = str(os.environ.get("OPENROUTER_BASE_URL") or (cfg.get("base_url") or "https://openrouter.ai/api/v1"))
         model = str(cfg.get("model") or "qwen/qwen3-coder:free")
         system_prompt = cfg.get("system_prompt") if isinstance(cfg.get("system_prompt"), str) else None  # type: ignore
         temperature = float(cfg.get("temperature") or 0.2)
@@ -103,6 +93,7 @@ class OpenRouterProvider:
             extra_headers=extra_headers,
         )
 
+    # Simple string API (backwards compatible)
     def send_message(self, message: str) -> str:
         messages: List[ChatCompletionMessageParam] = []
         if self.system_prompt:
@@ -138,3 +129,53 @@ class OpenRouterProvider:
         for chunk in stream:
             if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
+
+    # Chat + tool calling API
+    def chat(
+        self,
+        messages: List[Dict[str, Any]],
+        *,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        tool_choice: Optional[Any] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        extra_headers: Optional[Dict[str, str]] = None,
+        timeout: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        resp = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            tools=tools,
+            tool_choice=tool_choice,
+            temperature=temperature if temperature is not None else self.temperature,
+            max_tokens=max_tokens if max_tokens is not None else self.max_tokens,
+            timeout=timeout if timeout is not None else self.request_timeout,
+            stream=False,
+            extra_headers={**self.extra_headers, **(extra_headers or {})},
+        )
+        return resp.model_dump()
+
+    def stream_chat(
+        self,
+        messages: List[Dict[str, Any]],
+        *,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        tool_choice: Optional[Any] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        extra_headers: Optional[Dict[str, str]] = None,
+        timeout: Optional[float] = None,
+    ) -> Iterable[Any]:
+        stream = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            tools=tools,
+            tool_choice=tool_choice,
+            temperature=temperature if temperature is not None else self.temperature,
+            max_tokens=max_tokens if max_tokens is not None else self.max_tokens,
+            timeout=timeout if timeout is not None else self.request_timeout,
+            stream=True,
+            extra_headers={**self.extra_headers, **(extra_headers or {})},
+        )
+        for chunk in stream:
+            yield chunk
