@@ -55,6 +55,14 @@ def load_builtin_tools() -> None:
     except Exception:
         pass
 
+    # RAG tools (optional; require sentence-transformers + numpy)
+    try:
+        from .rag import index as _rag_index  # noqa: F401
+        from .rag import query as _rag_query  # noqa: F401
+    except Exception:
+        # It's okay if RAG deps aren't installed yet
+        pass
+
 
 __all__ = [
     "BaseTool",
