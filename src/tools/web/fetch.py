@@ -206,6 +206,71 @@
 #             return asyncio.run(coro)
 #         return loop.run_until_complete(coro)
 
+# 02
+
+# from __future__ import annotations
+
+# from typing import Dict, Optional
+
+# import httpx
+# from pydantic import BaseModel, Field
+
+# from ..base_tool import BaseTool
+# from ..registry import registry
+
+
+# class FetchInput(BaseModel):
+#     url: str = Field(..., description="URL to fetch via HTTP GET")
+#     timeout_ms: int = Field(8000, ge=500, le=60000, description="Timeout in milliseconds")
+#     max_bytes: int = Field(500_000, ge=1024, le=5_000_000, description="Maximum response bytes to retain")
+#     headers: Optional[Dict[str, str]] = Field(None, description="Optional request headers")
+#     decode: bool = Field(True, description="Decode response as text if true")
+
+
+# class FetchOutput(BaseModel):
+#     status_code: int = Field(..., description="HTTP status code")
+#     content_type: Optional[str] = Field(None, description="Content-Type header")
+#     body: str = Field(..., description="Response body (possibly truncated)")
+#     truncated: bool = Field(False, description="Whether the body was truncated")
+
+
+# class FetchTool(BaseTool[FetchInput, FetchOutput]):
+#     name = "web.fetch"
+#     description = "Fetch a URL with HTTP GET, returning text body and metadata."
+#     input_model = FetchInput
+#     output_model = FetchOutput
+
+#     requires_network = True
+#     timeout_seconds = 15.0
+#     max_concurrency = 8
+#     tags = frozenset({"web", "http", "fetch"})
+
+#     async def execute(self, params: FetchInput, *, context: Optional[dict] = None) -> FetchOutput:
+#         timeout = httpx.Timeout(params.timeout_ms / 1000.0)
+#         async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, headers=params.headers or {}) as client:
+#             resp = await client.get(params.url)
+#             raw = resp.content
+#             truncated = False
+#             if len(raw) > params.max_bytes:
+#                 raw = raw[: params.max_bytes]
+#                 truncated = True
+#             if params.decode:
+#                 try:
+#                     body = raw.decode(resp.encoding or "utf-8", errors="replace")
+#                 except Exception:
+#                     body = raw.decode("utf-8", errors="replace")
+#             else:
+#                 body = raw.decode("utf-8", errors="replace")
+#             return FetchOutput(
+#                 status_code=resp.status_code,
+#                 content_type=resp.headers.get("Content-Type"),
+#                 body=body,
+#                 truncated=truncated,
+#             )
+
+
+# registry.register_tool(FetchTool())\
+
 from __future__ import annotations
 
 from typing import Dict, Optional
@@ -239,6 +304,7 @@ class FetchTool(BaseTool[FetchInput, FetchOutput]):
     output_model = FetchOutput
 
     requires_network = True
+    requires_filesystem = False
     timeout_seconds = 15.0
     max_concurrency = 8
     tags = frozenset({"web", "http", "fetch"})
@@ -267,4 +333,5 @@ class FetchTool(BaseTool[FetchInput, FetchOutput]):
             )
 
 
+# Auto-register
 registry.register_tool(FetchTool())
