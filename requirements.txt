@@ -46,6 +46,8 @@ openai>=1.40.0,<2
 PyYAML>=6.0.1,<7
 
 python-dotenv>=1.0.1,<2
+colorama 
+pyfiglet
 
 
 
