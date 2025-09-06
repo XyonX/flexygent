@@ -104,4 +104,4 @@ class RSSTool(BaseTool[RSSInput, RSSOutput]):
 
 
 # Auto-register
-registry.register_tool(RSSTool())
+# registry.register_tool(RSSTool())

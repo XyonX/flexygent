@@ -334,4 +334,4 @@ class FetchTool(BaseTool[FetchInput, FetchOutput]):
 
 
 # Auto-register
-registry.register_tool(FetchTool())
+# registry.register_tool(FetchTool())

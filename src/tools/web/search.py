@@ -174,4 +174,4 @@ class SearchTool(BaseTool[SearchInput, SearchOutput]):
 
 
 # Auto-register at import time
-registry.register_tool(SearchTool())
+# registry.register_tool(SearchTool())

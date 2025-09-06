@@ -2,10 +2,15 @@ from dotenv import load_dotenv
 import os
 import yaml
 
-from src.tools import load_builtin_tools, registry
 from src.llm.openrouter_provider import OpenRouterProvider
 from src.utils.config_loader import load_config, get_openrouter_cfg
 from src.agents.master_agent import MasterAgent
+from src.tools.registry import ToolRegistry
+from src.tools.builtin_loader import load_builtin_tools
+
+
+registry = ToolRegistry()
+
 
 
 def print_banner():
@@ -43,7 +48,7 @@ def main():
     config = load_yaml()
 
     # load builtin tools
-    load_builtin_tools()
+    load_builtin_tools(registry)
 
     # extract opentouter config
     or_config=get_openrouter_cfg(config)

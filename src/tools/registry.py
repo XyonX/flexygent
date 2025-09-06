@@ -127,13 +127,13 @@ class ToolRegistry:
 
 
 # A global registry instance you can import
-registry = ToolRegistry()
+# registry = ToolRegistry()
 
 
-def load_builtin_tools() -> None:
-    """
-    Import modules that auto-register their tools at import time.
-    Call this during app startup if you want built-ins available.
-    """
-    # System tools
-    from .system import echo  # noqa: F401  # side-effect: registers echo tool
+# def load_builtin_tools() -> None:
+#     """
+#     Import modules that auto-register their tools at import time.
+#     Call this during app startup if you want built-ins available.
+#     """
+#     # System tools
+#     from .system import echo  # noqa: F401  # side-effect: registers echo tool

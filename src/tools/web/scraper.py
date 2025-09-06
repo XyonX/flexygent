@@ -161,4 +161,4 @@ class ScraperTool(BaseTool[ScrapeInput, ScrapeOutput]):
 
 
 # Auto-register at import time
-registry.register_tool(ScraperTool())
+# registry.register_tool(ScraperTool())
