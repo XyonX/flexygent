@@ -1,4 +1,4 @@
-# from __future__ import annotations
+from __future__ import annotations
 
 # import asyncio
 # import json
@@ -209,72 +209,72 @@
 
 
 # 02
-from __future__ import annotations
+# from __future__ import annotations
 
-import asyncio
-from typing import Any, Dict, List, Optional
+# import asyncio
+# from typing import Any, Dict, List, Optional
 
-from .base_agent import BaseAgent, LLMProvider, MemoryStore
-from ..tools.base_tool import BaseTool
-from ..tools.registry import registry
-from ..orchestration.tool_call_orchestrator import ToolCallOrchestrator, UIAdapter
-from ..orchestration.interaction_policy import ToolUsePolicy, AutonomyLevel
+# from .base_agent import BaseAgent, LLMProvider, MemoryStore
+# from ..tools.base_tool import BaseTool
+# from ..tools.registry import registry
+# from ..orchestration.tool_call_orchestrator import ToolCallOrchestrator, UIAdapter
+# from ..orchestration.interaction_policy import ToolUsePolicy, AutonomyLevel
 
 
-class LLMToolAgent(BaseAgent):
-    """
-    Agent that lets the LLM choose tools (multi-step) with optional UI-driven confirmations/questions.
-    """
+# class LLMToolAgent(BaseAgent):
+#     """
+#     Agent that lets the LLM choose tools (multi-step) with optional UI-driven confirmations/questions.
+#     """
 
-    def __init__(
-        self,
-        name: str,
-        config: Dict[str, Any],
-        llm: Optional[LLMProvider] = None,
-        tools: Optional[List[BaseTool]] = None,
-        memory: Optional[MemoryStore] = None,
-        *,
-        policy: Optional[ToolUsePolicy] = None,
-        ui: Optional[UIAdapter] = None,
-        system_prompt: Optional[str] = None,
-    ) -> None:
-        super().__init__(name=name, config=config, llm=llm, tools=tools, memory=memory)
-        self._tool_names = [t.name for t in (tools or [])] or registry.list_tool_names()
-        self._orchestrator = ToolCallOrchestrator(
-            llm=self.llm,  # type: ignore[arg-type]
-            policy=policy or ToolUsePolicy(autonomy=AutonomyLevel.auto, max_steps=int(config.get("max_steps", 6))),
-            ui=ui,
-            default_system_prompt=system_prompt,
-        )
+#     def __init__(
+#         self,
+#         name: str,
+#         config: Dict[str, Any],
+#         llm: Optional[LLMProvider] = None,
+#         tools: Optional[List[BaseTool]] = None,
+#         memory: Optional[MemoryStore] = None,
+#         *,
+#         policy: Optional[ToolUsePolicy] = None,
+#         ui: Optional[UIAdapter] = None,
+#         system_prompt: Optional[str] = None,
+#     ) -> None:
+#         super().__init__(name=name, config=config, llm=llm, tools=tools, memory=memory)
+#         self._tool_names = [t.name for t in (tools or [])] or registry.list_tool_names()
+#         self._orchestrator = ToolCallOrchestrator(
+#             llm=self.llm,  # type: ignore[arg-type]
+#             policy=policy or ToolUsePolicy(autonomy=AutonomyLevel.auto, max_steps=int(config.get("max_steps", 6))),
+#             ui=ui,
+#             default_system_prompt=system_prompt,
+#         )
 
-    def process_task(self, task: str) -> Any:
-        return self._run_sync(self._process_task_async(task))
+#     def process_task(self, task: str) -> Any:
+#         return self._run_sync(self._process_task_async(task))
 
-    async def _process_task_async(self, task: str) -> Dict[str, Any]:
-        res = await self._orchestrator.run(
-            task,
-            tool_names=self._tool_names,
-            system_prompt=None,
-            temperature=float(self.config.get("temperature", 0.2)),
-            max_tokens=self.config.get("max_tokens"),
-            context={"agent": self.name},
-        )
-        self.update_memory("last_dialog", {"task": task, "messages": res["messages"]})
-        return {"agent": self.name, **res}
+#     async def _process_task_async(self, task: str) -> Dict[str, Any]:
+#         res = await self._orchestrator.run(
+#             task,
+#             tool_names=self._tool_names,
+#             system_prompt=None,
+#             temperature=float(self.config.get("temperature", 0.2)),
+#             max_tokens=self.config.get("max_tokens"),
+#             context={"agent": self.name},
+#         )
+#         self.update_memory("last_dialog", {"task": task, "messages": res["messages"]})
+#         return {"agent": self.name, **res}
 
-    def handle_tool_calls(self, tool_name: str, payload: Dict[str, Any]) -> Any:
-        tool = next((t for t in self.tools if t.name == tool_name), registry.get_tool(tool_name))
-        return self._run_sync(tool(payload))
+#     def handle_tool_calls(self, tool_name: str, payload: Dict[str, Any]) -> Any:
+#         tool = next((t for t in self.tools if t.name == tool_name), registry.get_tool(tool_name))
+#         return self._run_sync(tool(payload))
 
-    def _run_sync(self, coro):
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            return asyncio.run(coro)
-        return loop.run_until_complete(coro)
+#     def _run_sync(self, coro):
+#         try:
+#             loop = asyncio.get_running_loop()
+#         except RuntimeError:
+#             return asyncio.run(coro)
+#         return loop.run_until_complete(coro)
     
 
-from __future__ import annotations
+# from __future__ import annotations
 
 import asyncio
 from typing import Any, Dict, List, Optional

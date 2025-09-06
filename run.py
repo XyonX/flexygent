@@ -1,15 +1,36 @@
-from dotenv import load_dotenv
-import os
-import yaml
+import argparse
+import sys
 
-from src.tools import load_builtin_tools, registry
-from src.llm.openrouter_provider import OpenRouterProvider
-from src.utils.config_loader import load_config, get_openrouter_cfg
-from src.agents.master_agent import MasterAgent
+# -------------------------
+# Placeholder Agent Actions
+# -------------------------
 
 
-def print_banner():
+def plan_workflow(args):
+    print("🔹 [PLAN] Placeholder: Planning the workflow...")
 
+
+# -------------------------
+# CLI Setup
+# -------------------------
+
+
+
+#--------------------------
+# PRICESS OUTOUT
+#--------------------------
+
+commands = []
+
+def process_input(input):
+    if(input=="hi"):
+        print("hellow !!")
+    elif(input =="how are you"):
+        print("I am fine , how are you..")
+    else:
+        print(input)
+
+def main():
     banner = r"""
     ███████╗██╗     ███████╗██╗  ██╗██╗   ██╗ ██████╗ ███████╗███╗   ██╗████████╗
     ██╔════╝██║     ██╔════╝██║  ██║╚██╗ ██╔╝██╔═══██╗██╔════╝████╗  ██║╚══██╔══╝
@@ -19,55 +40,20 @@ def print_banner():
     ╚═╝     ╚══════╝╚══════╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   
     """
     print(banner)
-    print("     Welcome to FlexyAgent CLI  (type 'help' for commands, 'exit' to quit)\n")
+    print("Welcome to FlexyAgent CLI 🚀 (type 'help' for commands, 'exit' to quit)\n")
 
-
-def load_yaml():
-    with open("config/default.yaml") as f:
-        config = yaml.safe_load(f)
-        return config
-        
-
-
-def main():
-    # print banner
-    print_banner()
-
-    # load env
-    load_dotenv()
-
-    # print 
-    # print(os.getenv("CLOUDFLARE_API_KEY"))
-
-    # load yaml
-    config = load_yaml()
-
-    # load builtin tools
-    load_builtin_tools()
-
-    # extract opentouter config
-    or_config=get_openrouter_cfg(config)
-
-    # create llm
-
-    llm=OpenRouterProvider.from_config(or_config)
-
-    # allow tools
-    allowed = ["web.search"]
-
-    agent=MasterAgent(name="MasterAgent",config={"max_steps": 6, "temperature": 0.2},llm=llm,tools=[registry.get_tool(n) for n in allowed if registry.has_tool(n)])
-
-    
-    task = input("Enter task: ")
-    result=agent.process_task(task)
+    while True:
+        user_input=input("> ")
+        process_input(user_input)
 
 
 
-
-
-
-
-
-
-if __name__ == "__main__":
+if __name__=="__main__":
     main()
+
+
+
+
+
+
+

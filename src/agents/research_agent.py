@@ -9,6 +9,7 @@ from ..tools.registry import registry
 
 
 class ResearchAgent(BaseAgent):
+    
     """
     A simple research agent that:
       1) Searches the web for the task/topic
