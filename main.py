@@ -7,6 +7,14 @@ from src.utils.config_loader import load_config, get_openrouter_cfg
 from src.agents.master_agent import MasterAgent
 from src.tools.registry import ToolRegistry
 from src.tools.builtin_loader import load_builtin_tools
+import logging
+
+
+# Configure logging once (you can tweak formatting and level)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 
 registry = ToolRegistry()
@@ -27,10 +35,16 @@ def print_banner():
     print("     Welcome to FlexyAgent CLI  (type 'help' for commands, 'exit' to quit)\n")
 
 
-def load_yaml():
-    with open("config/default.yaml") as f:
-        config = yaml.safe_load(f)
-        return config
+def load_yaml(path="config/default.yaml"):
+    try:
+        with open(path, "r") as f:
+            config = yaml.safe_load(f)
+            logging.info(f"✅ Successfully loaded YAML from {path}")
+            return config
+    except Exception as e:
+        logging.error(f"❌ YAML loading failed for {path}: {type(e).__name__} - {e}")
+        raise
+
         
 
 

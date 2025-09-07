@@ -22,6 +22,7 @@ class MasterAgent(BaseAgent):
 
     
     async def _process_task_async(self,task):
+        pass
         
 
     def handle_tool_calls(self, tool_name: str, payload: Dict[str, Any]) -> Any:
