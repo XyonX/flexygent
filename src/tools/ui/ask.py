@@ -5,7 +5,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from ..base_tool import BaseTool
-from ..registry import registry
+# from ..registry import registry
 
 
 class AskInput(BaseModel):
@@ -34,4 +34,4 @@ class AskUserTool(BaseTool[AskInput, AskOutput]):
         return AskOutput(answer="", selected_option=None)
 
 
-registry.register_tool(AskUserTool())
+# registry.register_tool(AskUserTool())

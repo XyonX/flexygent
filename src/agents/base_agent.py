@@ -37,6 +37,7 @@ class BaseAgent(ABC):
         llm: Optional[LLMProvider] = None,
         tools: Optional[List[Any]] = None,
         memory: Optional[MemoryStore] = None,
+        registry:Optional[Any]=None
     ) -> None:
         """Initialize common agent state.
 
@@ -52,6 +53,7 @@ class BaseAgent(ABC):
         self.llm = llm
         self.tools = tools or []
         self.memory = memory
+        self.registry=registry
 
     @abstractmethod
     def process_task(self, task: str) -> Any:

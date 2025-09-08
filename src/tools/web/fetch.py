@@ -279,7 +279,7 @@ import httpx
 from pydantic import BaseModel, Field
 
 from ..base_tool import BaseTool
-from ..registry import registry
+# from ..registry import registry
 
 
 class FetchInput(BaseModel):

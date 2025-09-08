@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 from pydantic import BaseModel, Field
 
 from ..base_tool import BaseTool
-from ..registry import registry
+# from ..registry import registry
 
 
 class FeedItem(BaseModel):

@@ -17,20 +17,18 @@ logging.basicConfig(
 )
 
 
-registry = ToolRegistry()
-
-
 
 def print_banner():
 
     banner = r"""
     ███████╗██╗     ███████╗██╗  ██╗██╗   ██╗ ██████╗ ███████╗███╗   ██╗████████╗
-    ██╔════╝██║     ██╔════╝██║  ██║╚██╗ ██╔╝██╔═══██╗██╔════╝████╗  ██║╚══██╔══╝
-    █████╗  ██║     █████╗  ███████║ ╚████╔╝ ██║   ██║█████╗  ██╔██╗ ██║   ██║   
-    ██╔══╝  ██║     ██╔══╝  ██╔══██║  ╚██╔╝  ██║   ██║██╔══╝  ██║╚██╗██║   ██║   
-    ██║     ███████╗███████╗██║  ██║   ██║   ╚██████╔╝███████╗██║ ╚████║   ██║   
-    ╚═╝     ╚══════╝╚══════╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   
+    ██╔════╝██║     ██╔════╝╚██╗██╔╝╚██╗ ██╔╝██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝
+    █████╗  ██║     █████╗   ╚███╔╝  ╚████╔╝ ██║  ███╗█████╗  ██╔██╗ ██║   ██║   
+    ██╔══╝  ██║     ██╔══╝   ██╔██╗   ╚██╔╝  ██║   ██║██╔══╝  ██║╚██╗██║   ██║   
+    ██║     ███████╗███████╗██╔╝ ██╗   ██║   ╚██████╔╝███████╗██║ ╚████║   ██║   
+    ╚═╝     ╚══════╝╚══════╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝                                                                 
     """
+    
     print(banner)
     print("     Welcome to FlexyAgent CLI  (type 'help' for commands, 'exit' to quit)\n")
 
@@ -55,11 +53,16 @@ def main():
     # load env
     load_dotenv()
 
-    # print 
-    # print(os.getenv("CLOUDFLARE_API_KEY"))
-
     # load yaml
     config = load_yaml()
+
+
+    try:
+        registry = ToolRegistry()
+        logging.info("ToolRegistry instance created successfully.")
+    except Exception as e:
+        logging.error(f"Failed to create ToolRegistry instance: {e}")
+
 
     # load builtin tools
     load_builtin_tools(registry)

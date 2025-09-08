@@ -6,7 +6,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from ..base_tool import BaseTool
-from ..registry import registry
+# from ..registry import registry
 
 
 class EchoInput(BaseModel):
@@ -49,4 +49,4 @@ class EchoTool(BaseTool[EchoInput, EchoOutput]):
 
 
 # Register the tool at import-time so it's available once this module is imported
-registry.register_tool(EchoTool())
+# registry.register_tool(EchoTool())

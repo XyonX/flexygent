@@ -5,6 +5,10 @@ from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 from pydantic import BaseModel
 
 from .base_tool import BaseTool, ToolDescriptor
+import logging
+
+# Configure logging once at the top of your project
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 class ToolAlreadyRegisteredError(Exception):
@@ -40,8 +44,11 @@ class ToolRegistry:
         """Register a tool instance by its unique name."""
         name = tool.name
         if name in self._tools:
+            logging.warning(f"Attempted to register '{name}', but it's already registered.")
             raise ToolAlreadyRegisteredError(f"Tool '{name}' is already registered.")
         self._tools[name] = tool
+        logging.info(f"Tool '{name}' registered successfully.")
+
 
     def bulk_register(self, tools: Iterable[BaseTool]) -> None:
         """Register multiple tools; fails fast on duplicates."""
