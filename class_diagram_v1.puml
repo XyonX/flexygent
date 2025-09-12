@@ -1,0 +1,110 @@
+@startuml
+
+title Empty Diagram - flexygent
+
+
+class BaseAgent{
+
+- name: String
+- config : Dict [ str, Any] 
+- llm : LLMProvider
+- tools : List[Any]
+- memory MemoryStore
+- registry : Any
+
++ process_task(task: String ):Any
+- handle_tool_calls(self:self, tool_name :String ,payload:Dict[String , Any] )
++ update_memory (self , key :String , value :Any)
+
+}
+
+' Enumeration
+enum AutonomyLevel {
+  auto
+  confirm
+  never
+}
+
+note right of AutonomyLevel::auto
+  run tools without user confirmation
+end note
+
+note right of AutonomyLevel::confirm
+  ask for confirmation (all or per tool)
+end note
+
+note right of AutonomyLevel::never
+  do not expose tools to the LLM
+end note
+
+
+' Class
+class ToolUsePolicy {
+  - autonomy : AutonomyLevel
+  - allow_tools : Set[str]
+  - deny_tools : Set[str]
+  - confirm_tools : Set[str]
+
+  - max_steps : int
+  - max_tool_calls : int
+  - parallel_tool_calls : bool
+  - tool_result_truncate : int
+  - max_wall_time_s : float
+}
+
+' Notes for attributes
+note right of ToolUsePolicy::allow_tools
+  if set, only these tools are permitted
+end note
+
+note right of ToolUsePolicy::confirm_tools
+  always confirm these (if autonomy=confirm);
+  empty means "confirm all"
+end note
+
+note right of ToolUsePolicy::max_tool_calls
+  overall cap on tool calls (None = no cap)
+end note
+
+note right of ToolUsePolicy::max_wall_time_s
+  optional wall-time budget, enforced by caller
+end note
+
+
+class UIAdapter {
+
++ confirm_tool_call (self : self , tool_name:String , arguments : Dict[ str, Any], reason :str) : bool
++ ask_user ( self : self , question : List[ String], options : List [str], allow_free_text : bool  ) : String
++ emit_event ( self: self , kind: String , payload : Dict[ str, Any] )
+
+
+}
+
+
+class ToolCallingAgent{
+
+- name : String
+- config : Dict [ str, Any]
+- llm : ChatLLMProvider
+- tools : List[BaseTool]
+- memory : MemoryStore
+
+- policy : ToolUsePolicy
+- ui : UIAdapter
+- system_prompt :String
+
++ process_task (self: self , task: String):Any
+
+- _process_task_async(self , task:String):Dict[String , Any]
+
+- handle_tool_calls(self , tool_name:String , payload :Dict[ String , Any]) : Any
+
+- _run_sync()
+
+}
+
+
+
+
+
+@enduml
