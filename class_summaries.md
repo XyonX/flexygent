@@ -240,18 +240,46 @@ User Task ──→ ToolCallingAgent.process_task()
 
 ## High-Level Flow (ASCII Diagram)
 ```
-Config Load (via load_config()) ──→ AgentFactory.create_from_config() ──→ Agent Init (e.g., ToolCallingAgent via registry)
+Config Load (via load_config()) ──→ AgentFactory.create_from_config() ──→ Agent Init (e.g., ToolCallingAgent with AgentMemory)
              │
-User Task ──→ ToolCallingAgent.process_task() ──→ ToolCallOrchestrator.run() (loop orchestration)
+User Task ──→ ToolCallingAgent.process_task() ──→ ToolCallOrchestrator.run() (loop)
+             │
+             ├── Memory Access (get_recent_short("conversation") for prompt; store_long user facts)
              │
              ├── LLM (via llm.chat() / OpenRouterProvider) ──→ Tool Calls? (specs from ToolRegistry)
-             │     │ No ──→ Final Response (update_memory)
+             │     │ No ──→ Final Response (update_memory short/long)
              │     │ Yes ──→ Policy Check (allow/deny/confirm via UIAdapter)
              │           │ Denied ──→ Skip/Ask User (ui.ask intercept)
-             │           │ Allowed ──→ Execute Tool (BaseTool via registry) ──→ Result (truncate if needed)
+             │           │ Allowed ──→ Execute Tool (BaseTool) ──→ Store Result (append_short/store_long)
              │                         │
-             └── UI Events/Confirm (via NoopUIAdapter or custom) ──→ Loop (max_steps)
+             └── UI Events/Confirm (via NoopUIAdapter) ──→ Loop (max_steps)
 ```
+
+## ShortTermMemoryProtocol / InMemoryShortTerm (Interface/Impl)
+- **Purpose**: Ephemeral memory for current session (e.g., recent tool results, chat history). Prunes to avoid bloat (fits LLM windows).
+- **Key Methods**: `append(key, value)` (add ordered), `get_recent(key, n)` (last N deserialized), `prune(key, max_size)` (FIFO evict). Inherits store/retrieve/update from MemoryStore.
+- **Impl Details (InMemoryShortTerm)**: Uses deque per key (maxlen=50 default); JSON serialize/deserialize values.
+- **Usage**: For task context: `memory.append_short("tools_used", result)`; feed `get_recent_short("conversation")` to LLM prompt.
+
+## LongTermMemoryProtocol / FileLongTerm (Interface/Impl)
+- **Purpose**: Persistent memory for durable knowledge (e.g., user profiles, learned patterns). Stores with metadata; basic search (key match; extend for vectors).
+- **Key Methods**: `store(key, value, metadata: Dict[timestamp, agent_id, tags])`, `search(query, limit)` (pattern match), `delete(key)`. Inherits store/retrieve/update.
+- **Impl Details (FileLongTerm)**: JSON file (~/.flexygent/long_term_memory.json); loads/saves on ops. Metadata auto-adds timestamp.
+- **Usage**: For facts: `memory.store_long("user_name", "Alice", metadata={"source": "task1"})`; recall: `memory.retrieve("long:user_name")` or `search_long("user")`.
+
+## AgentMemory (Composite Class)
+- **Purpose**: Unified memory manager combining short-term (session/ephemeral) and long-term (persistent). Routes by key prefix ("short:..." vs. "long:..."); configurable (disable long-term for simple agents).
+- **Key Attributes**:
+  - `short_term: ShortTermMemoryProtocol` - In-session history (e.g., InMemoryShortTerm).
+  - `long_term: LongTermMemoryProtocol` - Cross-session storage (e.g., FileLongTerm).
+  - `enable_long_term: bool` - Toggle persistence.
+- **Key Methods**:
+  - `__init__(short_term: Optional, long_term: Optional, enable_long_term: bool = True)`: Builds composite.
+  - `store/retrieve/update(key: str, value: Any, metadata: Optional[Dict])`: Routes to short/long by prefix.
+  - Short: `append_short(key, value)`, `get_recent_short(key, n=10) -> List[Any]`.
+  - Long: `store_long(key, value, metadata)`, `search_long(query, limit=5) -> List[Dict[key, value, metadata]]`.
+  - Helpers: `clear_short/clear_long`.
+- **Usage**: In BaseAgent: `self.memory = AgentMemory(...)`; `self.update_memory("short:conv", msg)` for history; `self.memory.store_long("user_fact", fact)` for prefs. Factory creates from config.memory_type.
 
 This is a starting point—easy to expand. What format or additions next (e.g., update this file, add relationships, or focus back on class diagram)?
 

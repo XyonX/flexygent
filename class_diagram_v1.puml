@@ -172,6 +172,52 @@ ToolCallingAgent ..> ToolCallOrchestrator : delegates execution (loop)
 BaseAgent <|-- ToolCallingAgent  ' Example inheritance
 AgentRegistry *-- "many" BaseAgent : registers classes
 
+' Memory Section (src/memory/ - Short/Long-Term Composite)
+interface ShortTermMemoryProtocol {
+  + {abstract} append(key: str, value: Any) -> None
+  + {abstract} get_recent(key: str, n: int) -> List[Any]
+  + {abstract} prune(key: str, max_size: int) -> None
+}
+
+interface LongTermMemoryProtocol {
+  + {abstract} store(key: str, value: Any, metadata: Dict) -> None
+  + {abstract} search(query: str, limit: int) -> List[Dict]
+  + {abstract} delete(key: str) -> None
+}
+
+class AgentMemory {
+  - short_term: ShortTermMemoryProtocol
+  - long_term: LongTermMemoryProtocol
+  - SHORT_PREFIX: str = "short:"
+  - LONG_PREFIX: str = "long:"
+  + __init__(short_term: Optional, long_term: Optional, enable_long_term: bool = True)
+  + store/retrieve/update(key: str, value: Any, metadata: Optional[Dict])  # Routes by prefix
+  + append_short/get_recent_short(...)
+  + store_long/search_long(...)
+}
+
+class InMemoryShortTerm {
+  - _store: Dict[str, deque[str]]  # Serialized history
+  + __init__(max_history_per_key: int = 50)
+  + append/get_recent/prune/store/retrieve/update(...)
+}
+
+class FileLongTerm {
+  - file_path: Path = "~/.flexygent/long_term_memory.json"
+  - _store: Dict[str, Dict[str, Any]]  # {"value": Any, "metadata": Dict}
+  + __init__(file_path: str)
+  + store/retrieve/search/delete/update(...)
+}
+
+' Relationships for memory
+InMemoryShortTerm ..|> ShortTermMemoryProtocol
+FileLongTerm ..|> LongTermMemoryProtocol
+AgentMemory *-- ShortTermMemoryProtocol : composes
+AgentMemory *-- LongTermMemoryProtocol : optional
+BaseAgent o-- AgentMemory : memory (composite)
+AgentFactory ..> AgentMemory : creates from config
+ToolCallOrchestrator ..> AgentMemory : optional access (e.g., store results)
+
 ' Utils Section (Functions in src/utils/config_loader.py - no classes, pure utilities)
 package "Utils (config_loader.py)" {
   note "Utility functions for configuration:\n- load_config(paths: Optional[Iterable[str]] = None) -> Dict[str, Any]: Merges YAML configs from paths (default: config/default.yaml), expands env vars.\n- get_openrouter_cfg(cfg: Dict[str, Any]) -> Dict[str, Any]: Extracts llm.openrouter sub-config.\n- get_llm_provider_cfg(cfg: Dict[str, Any], provider: str) -> Dict[str, Any]: Extracts llm.{provider} sub-config.\n\nUsed for agent/provider initialization (e.g., from_config)."
