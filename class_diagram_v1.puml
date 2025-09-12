@@ -1,21 +1,201 @@
 @startuml
 
-title Empty Diagram - flexygent
+title Flexygent Class Diagram v1
+
+' LLM Providers Section
+
+' Base Protocol for simple LLM interaction
+interface LLMProvider {
+  + {abstract} send_message(message: str) -> Any
+  + {abstract} stream_message(message: str) -> Iterable[Any]
+}
+
+' Advanced Protocol for chat + tool-calling (OpenAI-compatible)
+interface ChatLLMProvider {
+  + {abstract} chat(messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]] = None, tool_choice: Optional[Any] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, extra_headers: Optional[Dict[str, str]] = None, timeout: Optional[float] = None) -> Dict[str, Any]
+  + {abstract} stream_chat(messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]] = None, tool_choice: Optional[Any] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, extra_headers: Optional[Dict[str, str]] = None, timeout: Optional[float] = None) -> Iterable[Any]
+}
+
+' Simple implementation for testing
+class SimpleLLMProvider {
+  - max_output_chars: int = 800
+
+  + __init__(max_output_chars: int = 800)
+  + send_message(message: str) -> str
+  + stream_message(message: str) -> Generator[str, None, None]
+}
+
+' OpenRouterProvider (implements both protocols; uses OpenAI client for compatibility)
+class OpenRouterProvider {
+  - client: OpenAI
+  - model: str = "qwen/qwen3-coder:free"
+  - system_prompt: Optional[str]
+  - temperature: float = 0.2
+  - max_tokens: Optional[int]
+  - request_timeout: float = 60.0
+  - extra_headers: Dict[str, str]
+
+  + __init__(api_key: Optional[str] = None, base_url: Optional[str] = None, model: str = "qwen/qwen3-coder:free", system_prompt: Optional[str] = None, temperature: float = 0.2, max_tokens: Optional[int] = None, request_timeout: float = 60.0, extra_headers: Optional[Dict[str, str]] = None)
+  + from_config(cfg: Dict[str, object]) -> OpenRouterProvider
+  + send_message(message: str) -> str
+  + stream_message(message: str) -> Iterable[str]
+  + chat(messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]] = None, tool_choice: Optional[Any] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, extra_headers: Optional[Dict[str, str]] = None, timeout: Optional[float] = None) -> Dict[str, Any]
+  + stream_chat(messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]] = None, tool_choice: Optional[Any] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, extra_headers: Optional[Dict[str, str]] = None, timeout: Optional[float] = None) -> Iterable[Any]
+}
+
+' Implements protocols
+OpenRouterProvider ..|> LLMProvider
+OpenRouterProvider ..|> ChatLLMProvider
+SimpleLLMProvider ..|> LLMProvider
+
+' Tools Section
+
+' BaseTool abstract class
+abstract class BaseTool {
+  - name: str
+  - description: str
+  - input_model: Type[TIn] (Pydantic BaseModel)
+  - output_model: Type[TOut] (Pydantic BaseModel)
+  - timeout_seconds: Optional[float] = 30.0
+  - max_concurrency: Optional[int]
+  - requires_network: bool = False
+  - requires_filesystem: bool = False
+  - tags: Set[str] = frozenset()
+
+  + __init__()
+  + get_schema() -> Dict[str, Any]  ' JSON schema for LLM tool-calling
+  + to_descriptor() -> ToolDescriptor
+  + __call__(data: Union[Dict[str, Any], TIn], context: Optional[Dict[str, Any]] = None) -> TOut  ' Validates & executes with limits
+  + {abstract} execute(params: TIn, context: Optional[Dict[str, Any]] = None) -> TOut
+  - _validate_input(data: Union[Dict[str, Any], TIn]) -> TIn
+  - _execute_with_handling(params: TIn, context: Optional[Dict[str, Any]]) -> TOut
+  - _maybe_timeout(coro_factory) -> TOut
+}
+
+' ToolRegistry class
+class ToolRegistry {
+  - _tools: Dict[str, BaseTool]
+
+  + __init__()
+  + register_tool(tool: BaseTool) -> None
+  + bulk_register(tools: Iterable[BaseTool]) -> None
+  + get_tool(name: str) -> BaseTool
+  + has_tool(name: str) -> bool
+  + list_tool_names(tags: Optional[Set[str]] = None) -> List[str]
+  + list_tools(tags: Optional[Set[str]] = None) -> List[BaseTool]
+  + list_descriptors(tags: Optional[Set[str]] = None) -> List[ToolDescriptor]
+  + get_llm_function_specs(tool_names: Optional[Sequence[str]] = None) -> List[dict]
+  + get_tools_for_agent(agent_name: str, policy: Optional[Dict[str, Sequence[str]]] = None, fallback_tags: Optional[Set[str]] = None) -> List[BaseTool]
+}
+
+' Example concrete tools (subclasses of BaseTool)
+class EchoTool {
+  ' Input: EchoInput (text: str, uppercase: bool, repeat: int=1, delay_ms: Optional[int])
+  ' Output: EchoOutput (result: str, length: int)
+
+  + execute(params: EchoInput, context: Optional[dict] = None) -> EchoOutput
+}
+
+class AskUserTool {
+  ' Input: AskInput (question: str, options: Optional[List[str]], allow_free_text: bool=True)
+  ' Output: AskOutput (answer: str, selected_option: Optional[str])
+
+  + execute(params: AskInput, context: Optional[dict] = None) -> AskOutput  ' Virtual; intercepted by orchestrator
+}
+
+class FetchTool {
+  ' Input: FetchInput (url: str, timeout_ms: int=8000, max_bytes: int=500000, headers: Optional[Dict[str, str]], decode: bool=True)
+  ' Output: FetchOutput (status_code: int, content_type: Optional[str], body: str, truncated: bool)
+
+  + execute(params: FetchInput, context: Optional[dict] = None) -> FetchOutput
+}
+
+' Relationships for tools
+EchoTool --|> BaseTool
+AskUserTool --|> BaseTool
+FetchTool --|> BaseTool
+ToolRegistry *-- "many" BaseTool  ' Holds registered tools
+BaseAgent o-- "many" BaseTool  ' tools: List[BaseTool]
+ToolCallingAgent o-- "many" BaseTool  ' Inherits and uses
+
+' Agent Management Section (src/agents/agent_factory.py, agent_registry.py)
+class AgentRegistry {
+  - _agent_classes: Dict[str, Type[BaseAgent]]
+
+  + __init__()
+  + register(agent_type: str, agent_class: Type[BaseAgent]) -> None
+  + get_agent_class(agent_type: str) -> Type[BaseAgent]
+  + list_agent_types() -> list
+  + is_registered(agent_type: str) -> bool
+}
+
+class AgentFactory {
+  - agent_registry: AgentRegistry
+  - tool_registry: ToolRegistry
+  - llm_factory: LLMFactory  ' Placeholder for LLM creation
+
+  + __init__(agent_registry: Optional[AgentRegistry] = None, tool_registry: Optional[ToolRegistry] = None)
+  + create_from_config(config: AgentConfig) -> BaseAgent
+  + create_from_file(file_path: str) -> BaseAgent
+  + create_from_dict(config_dict: Dict[str, Any]) -> BaseAgent
+}
+
+' Orchestration Section (src/orchestration/tool_call_orchestrator.py)
+class ToolCallOrchestrator {
+  - llm: OpenRouterProvider
+  - policy: ToolUsePolicy
+  - ui: UIAdapter
+  - default_system_prompt: str
+
+  + __init__(llm: OpenRouterProvider, policy: Optional[ToolUsePolicy] = None, ui: Optional[UIAdapter] = None, default_system_prompt: Optional[str] = None)
+  + run(user_message: str, tool_names: List[str], system_prompt: Optional[str] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]  ' Main async loop
+  - _filter_tools(tool_names: List[str]) -> List[str]
+  - _execute_tool_calls(tool_calls: List[Dict[str, Any]], allowed: List[str], context: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]
+  - _tool_message(name: str, tool_call_id: str, content: Any) -> Dict[str, Any]
+}
+
+class NoopUIAdapter {
+  + confirm_tool_call(tool_name: str, arguments: Dict[str, Any], reason: str) -> bool  ' Always True
+  + ask_user(question: str, options: Optional[List[str]] = None, allow_free_text: bool = True) -> str  ' Returns empty
+  + emit_event(kind: str, payload: Dict[str, Any]) -> None  ' No-op
+}
+
+' Relationships for agents/orchestration
+AgentFactory *-- AgentRegistry : uses
+AgentFactory *-- ToolRegistry : uses
+AgentFactory ..> OpenRouterProvider : creates via LLMFactory
+ToolCallOrchestrator ..> ToolUsePolicy : enforces
+ToolCallOrchestrator ..> UIAdapter : uses (default NoopUIAdapter)
+ToolCallOrchestrator ..> OpenRouterProvider : llm
+ToolCallOrchestrator ..> ToolRegistry : executes tools
+ToolCallingAgent ..> ToolCallOrchestrator : delegates execution (loop)
+BaseAgent <|-- ToolCallingAgent  ' Example inheritance
+AgentRegistry *-- "many" BaseAgent : registers classes
+
+' Utils Section (Functions in src/utils/config_loader.py - no classes, pure utilities)
+package "Utils (config_loader.py)" {
+  note "Utility functions for configuration:\n- load_config(paths: Optional[Iterable[str]] = None) -> Dict[str, Any]: Merges YAML configs from paths (default: config/default.yaml), expands env vars.\n- get_openrouter_cfg(cfg: Dict[str, Any]) -> Dict[str, Any]: Extracts llm.openrouter sub-config.\n- get_llm_provider_cfg(cfg: Dict[str, Any], provider: str) -> Dict[str, Any]: Extracts llm.{provider} sub-config.\n\nUsed for agent/provider initialization (e.g., from_config)."
+}
+
+' Relationships: Utils used in providers/agents
+OpenRouterProvider ..> Utils : uses load_config/from_config
+BaseAgent ..> Utils : uses load_config for config
+
+' BaseAgent class with methods populated from base_agent.py
+class BaseAgent {
 
 
-class BaseAgent{
+  - name: str
+  - config: Dict[str, Any]
+  - llm: Optional[LLMProvider]
+  - tools: List[Any]
+  - memory: Optional[MemoryStore]
+  - registry: Optional[Any]
 
-- name: String
-- config : Dict [ str, Any] 
-- llm : LLMProvider
-- tools : List[Any]
-- memory MemoryStore
-- registry : Any
-
-+ process_task(task: String ):Any
-- handle_tool_calls(self:self, tool_name :String ,payload:Dict[String , Any] )
-+ update_memory (self , key :String , value :Any)
-
+  + __init__(name: str, config: Dict[str, Any], llm: Optional[LLMProvider] = None, tools: Optional[List[Any]] = None, memory: Optional[MemoryStore] = None, registry: Optional[Any] = None)
+  + {abstract} process_task(task: str) -> Any
+  + {abstract} handle_tool_calls(tool_name: str, payload: Dict[str, Any]) -> Any
+  + update_memory(key: str, value: Any) -> None
 }
 
 ' Enumeration
@@ -37,29 +217,28 @@ note right of AutonomyLevel::never
   do not expose tools to the LLM
 end note
 
-
-' Class
+' ToolUsePolicy class (dataclass, minimal methods)
 class ToolUsePolicy {
-  - autonomy : AutonomyLevel
-  - allow_tools : Set[str]
-  - deny_tools : Set[str]
-  - confirm_tools : Set[str]
+  - autonomy: AutonomyLevel
+  - allow_tools: Optional[Set[str]]
+  - deny_tools: Set[str]
+  - confirm_tools: Set[str]
+  - max_steps: int
+  - max_tool_calls: Optional[int]
+  - parallel_tool_calls: bool
+  - tool_result_truncate: int
+  - max_wall_time_s: Optional[float]
 
-  - max_steps : int
-  - max_tool_calls : int
-  - parallel_tool_calls : bool
-  - tool_result_truncate : int
-  - max_wall_time_s : float
+  + __init__(autonomy: AutonomyLevel = auto, allow_tools: Optional[Set[str]] = None, deny_tools: Set[str] = set(), confirm_tools: Set[str] = set(), max_steps: int = 8, max_tool_calls: Optional[int] = None, parallel_tool_calls: bool = True, tool_result_truncate: int = 8000, max_wall_time_s: Optional[float] = None)
+  + __post_init__()  ' Optional validation post-init
 }
 
-' Notes for attributes
 note right of ToolUsePolicy::allow_tools
   if set, only these tools are permitted
 end note
 
 note right of ToolUsePolicy::confirm_tools
-  always confirm these (if autonomy=confirm);
-  empty means "confirm all"
+  always confirm these (if autonomy=confirm); empty means "confirm all"
 end note
 
 note right of ToolUsePolicy::max_tool_calls
@@ -70,41 +249,29 @@ note right of ToolUsePolicy::max_wall_time_s
   optional wall-time budget, enforced by caller
 end note
 
-
+' UIAdapter class (Protocol, methods from tool_call_orchestrator.py)
 class UIAdapter {
-
-+ confirm_tool_call (self : self , tool_name:String , arguments : Dict[ str, Any], reason :str) : bool
-+ ask_user ( self : self , question : List[ String], options : List [str], allow_free_text : bool  ) : String
-+ emit_event ( self: self , kind: String , payload : Dict[ str, Any] )
-
-
+  + {abstract} confirm_tool_call(tool_name: str, arguments: Dict[str, Any], reason: str) -> bool
+  + {abstract} ask_user(question: List[str], options: List[str], allow_free_text: bool) -> str
+  + {abstract} emit_event(kind: str, payload: Dict[str, Any]) -> None
 }
 
+' ToolCallingAgent class (placeholder init based on attributes; file unimplemented)
+class ToolCallingAgent {
+  - name: str
+  - config: Dict[str, Any]
+  - llm: ChatLLMProvider
+  - tools: List[BaseTool]
+  - memory: MemoryStore
+  - policy: ToolUsePolicy
+  - ui: UIAdapter
+  - system_prompt: str
 
-class ToolCallingAgent{
-
-- name : String
-- config : Dict [ str, Any]
-- llm : ChatLLMProvider
-- tools : List[BaseTool]
-- memory : MemoryStore
-
-- policy : ToolUsePolicy
-- ui : UIAdapter
-- system_prompt :String
-
-+ process_task (self: self , task: String):Any
-
-- _process_task_async(self , task:String):Dict[String , Any]
-
-- handle_tool_calls(self , tool_name:String , payload :Dict[ String , Any]) : Any
-
-- _run_sync()
-
+  + __init__(name: str, config: Dict[str, Any], llm: ChatLLMProvider, tools: List[BaseTool], memory: MemoryStore, policy: ToolUsePolicy, ui: UIAdapter, system_prompt: str)
+  + process_task(task: str) -> Any
+  - _process_task_async(task: str) -> Dict[str, Any]
+  - handle_tool_calls(tool_name: str, payload: Dict[str, Any]) -> Any
+  - _run_sync()
 }
-
-
-
-
 
 @enduml
