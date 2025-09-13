@@ -1,0 +1,72 @@
+@startuml
+title Flexygent System Sequence Diagram
+
+actor User
+participant AgentFactory
+participant ToolCallingAgent
+participant ToolRegistry
+participant ToolCallOrchestrator
+participant OpenRouterProvider
+participant "BaseTool" as Tool
+participant AgentMemory
+participant UIAdapter
+
+' === Initialization Phase ===
+User -> AgentFactory: create_from_config(config)
+AgentFactory -> ToolRegistry: list_tools()
+AgentFactory <-- ToolRegistry: available tools
+AgentFactory -> OpenRouterProvider: initialize
+AgentFactory -> AgentMemory: initialize(short_term, long_term)
+AgentFactory -> ToolCallingAgent: create(llm, tools, memory)
+AgentFactory --> User: agent instance
+
+' === Task Processing Phase ===
+User -> ToolCallingAgent: process_task(task)
+activate ToolCallingAgent
+
+ToolCallingAgent -> AgentMemory: get_recent_short("messages", n)
+ToolCallingAgent <-- AgentMemory: recent messages
+
+ToolCallingAgent -> OpenRouterProvider: chat(messages, tools)
+activate OpenRouterProvider
+OpenRouterProvider --> ToolCallingAgent: response with tool calls
+deactivate OpenRouterProvider
+
+' === Tool Orchestration Loop ===
+loop for each tool call
+  ToolCallingAgent -> ToolCallOrchestrator: run(tool_calls)
+  activate ToolCallOrchestrator
+  
+  ToolCallOrchestrator -> ToolCallOrchestrator: _filter_tools(tool_names)
+  
+  alt if policy requires confirmation
+    ToolCallOrchestrator -> UIAdapter: confirm_tool_call(tool_name, arguments, reason)
+    UIAdapter --> User: request confirmation
+    User --> UIAdapter: confirm/deny
+    UIAdapter --> ToolCallOrchestrator: user decision
+  end
+  
+  ToolCallOrchestrator -> Tool: execute(params, context)
+  activate Tool
+  Tool --> ToolCallOrchestrator: tool execution result
+  deactivate Tool
+  
+  ToolCallOrchestrator -> ToolCallOrchestrator: _tool_message(name, tool_call_id, content)
+  ToolCallOrchestrator --> ToolCallingAgent: tool execution results
+  deactivate ToolCallOrchestrator
+  
+  ToolCallingAgent -> AgentMemory: append_short("tool_calls", result)
+  
+  ToolCallingAgent -> OpenRouterProvider: chat(messages with tool results)
+  activate OpenRouterProvider
+  OpenRouterProvider --> ToolCallingAgent: updated response
+  deactivate OpenRouterProvider
+end
+
+' === Memory Storage ===
+ToolCallingAgent -> AgentMemory: store_long(task_id, conversation, metadata)
+
+ToolCallingAgent --> User: final response
+deactivate ToolCallingAgent
+
+@enduml
