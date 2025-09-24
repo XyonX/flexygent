@@ -1,0 +1,26 @@
+[
+  {
+    "name": "openai",
+    "api_key": "sk-12345",
+    "base_url": "https://api.openai.com/v1",
+    "models": ["gpt-4", "gpt-3.5"]
+  },
+  {
+    "name": "cloudflare",
+    "api_key": "cf-67890",
+    "base_url": "https://api.cloudflare.com/ai",
+    "models": ["llama-2", "mistral"]
+  },
+  {
+    "name": "openrouter",
+    "api_key": "or-abcdef",
+    "base_url": "https://openrouter.ai/api/v1",
+    "models": ["gpt-4", "claude-3"]
+  },
+  {
+    "name": "claude",
+    "api_key": "cl-zyxwv",
+    "base_url": "https://api.anthropic.com",
+    "models": ["claude-3", "claude-2.1"]
+  }
+]

@@ -1,0 +1,47 @@
+# # Example agent configuration schema
+# name: "agent_name"
+# description: "Agent description"
+# type: "tool_agent"  # Corresponds to a base agent class type
+# system_prompt: "You are a helpful AI assistant..."
+# llm:
+#   provider: "openrouter"
+#   model: "anthropic/claude-3-opus"
+#   temperature: 0.7
+#   max_tokens: 2048
+# tools:
+#   - name: "web_search"
+#     enabled: true
+#     parameters: {}
+#   - name: "calculator"
+#     enabled: true
+#     parameters: {}
+# max_tool_calls: 5
+# memory:
+#   type: "chroma_db"
+#   persistence: true
+#   context_window: 10
+
+
+# Example agent configuration schema
+# genesis is the master agent
+name: "genesis"
+description: "the genesis master agetn"
+type: "tool_agent"  # Corresponds to a base agent class type
+system_prompt: "You are the top level agent with most authority , you have a list of agent availale to use , you will instruct them or uses them depending the task"
+llm:
+  provider: "openrouter"
+  model: "anthropic/claude-3-opus"
+  temperature: 0.7
+  max_tokens: 2048
+tools:
+  - name: "web_search"
+    enabled: true
+    parameters: {}
+  - name: "calculator"
+    enabled: true
+    parameters: {}
+max_tool_calls: 5
+memory:
+  type: "chroma_db"
+  persistence: true
+  context_window: 10

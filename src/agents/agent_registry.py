@@ -1,6 +1,7 @@
 from typing import Dict, Type, Optional
 from .base_agent import BaseAgent
 
+
 class AgentRegistry:
     """Registry for agent types that can be instantiated from configurations."""
     

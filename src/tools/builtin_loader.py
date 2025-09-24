@@ -7,3 +7,4 @@ def load_builtin_tools(registry):
     registry.register_tool(FetchTool())
     registry.register_tool(SearchTool())
     registry.register_tool(EchoTool())
+    print("Builting tool loading successfull !!")
