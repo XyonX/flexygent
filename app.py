@@ -5,6 +5,12 @@ from src.llm.openrouter_provider import OpenRouterProvider
 from src.tools.registry import ToolRegistry
 from src.tools.builtin_loader import load_builtin_tools
 from src.utils.themes import print_banner
+from src.agents.agent_registry import AgentRegistry
+from src.agents.tool_calling_agent import ToolCallingAgent
+from src.memory import InMemoryShortTerm, FileLongTerm, AgentMemory
+# from src.policy import ToolUsePolicy, AutonomyLevel
+from src.agents.agent_factory import AgentFactory
+from src.orchestration.tool_call_orchestrator import ToolCallOrchestrator
 
 class FlexygentApp:
     def __init__(self,config_path=None):
@@ -31,9 +37,36 @@ class FlexygentApp:
 
 
         # step 4: create and register agent
+        self.agent_registry = AgentRegistry()
+        self.agent_registry.register('tool_calling', ToolCallingAgent)
+
+        # step 5: create memory
+        # short_term = InMemoryShortTerm(max_history_per_key=50)
+        # long_term = FileLongTerm(file_path='~/.flexygent/long_term_memory.json')
+        # self.agent_memory = AgentMemory(short_term=short_term, long_term=long_term, enable_long_term=True)
+
+        # # Step 6: Create policy
+        # self.policy = ToolUsePolicy(autonomy=AutonomyLevel.confirm, max_steps=8)
+
+        # # Step 7: Create UI adapter
+        # self.ui_adapter = NoopUIAdapter()
+
+        # Step 8: Create agent factory
+        self.agent_factory = AgentFactory(agent_registry=self.agent_registry, tool_registry=self.tool_registry)
+
+        # Step 9: Create orchestrator
+        self.orchestrator = ToolCallOrchestrator(
+            llm=self.llm_provider, policy=self.policy, ui=self.ui_adapter, default_system_prompt='You are a helpful agent.'
+        )
 
 
-
+        # Step 10: Create agent instance (using factory)
+        agent_config = {'type': 'tool_calling', 'name': 'MyAgent'}  # Pull from self.config if needed
+        self.agent = self.agent_factory.create_from_dict(agent_config)
+        # Inject dependencies if not handled by factory (e.g., memory, orchestrator)
+        self.agent.memory = self.agent_memory  # Assuming BaseAgent has setters or constructor allows this
+        
+        # Any other init (e.g., logging setup)
         
 
 
