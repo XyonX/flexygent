@@ -25,3 +25,25 @@ class AgentRegistry:
     def is_registered(self, agent_type: str) -> bool:
         """Check if an agent type is registered."""
         return agent_type in self._agent_classes
+
+
+def register_builtin_agents(registry: AgentRegistry) -> None:
+    """Register all built-in agent types with the registry."""
+    # Import here to avoid circular imports
+    from .tool_calling_agent import ToolCallingAgent, LLMToolAgent
+    from .reasoning_tool_agent import ReasoningToolAgent
+    from .adaptive_tool_agent import AdaptiveToolAgent
+    from .general_tool_agent import GeneralToolAgent
+    from .research_agent import ResearchAgent
+    from .rag_agent import RAGAgent
+    from .master_agent import MasterAgent
+    
+    # Register all available agent types
+    registry.register('tool_calling', ToolCallingAgent)
+    registry.register('llm_tool', LLMToolAgent)  # alias for compatibility
+    registry.register('reasoning', ReasoningToolAgent)
+    registry.register('adaptive', AdaptiveToolAgent)
+    registry.register('general', GeneralToolAgent)
+    registry.register('research', ResearchAgent)
+    registry.register('rag', RAGAgent)
+    registry.register('master', MasterAgent)

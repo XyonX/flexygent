@@ -134,7 +134,7 @@ class ToolRegistry:
 
 
 # A global registry instance you can import
-# registry = ToolRegistry()
+registry = ToolRegistry()
 
 
 # def load_builtin_tools() -> None:

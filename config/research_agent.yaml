@@ -1,0 +1,55 @@
+name: "research_assistant"
+type: "research"
+description: "Specialized agent for research tasks, web searches, and information gathering"
+
+llm:
+  provider: "openrouter"
+  model: "anthropic/claude-3-opus"
+  temperature: 0.3
+  max_tokens: 3000
+
+# Tools optimized for research
+tools:
+  allowlist:
+    - "web.search"          # Search the web for information
+    - "web.fetch"           # Fetch specific URLs
+    - "system.echo"         # For testing and debugging
+  resolve_objects: true
+
+# Policy settings for research
+policy:
+  autonomy: "auto"           # Can search and fetch automatically
+  max_steps: 12              # More steps for thorough research
+
+# System prompt for research behavior
+prompts:
+  system: |
+    You are a research assistant AI specialized in information gathering and analysis.
+    
+    Your capabilities:
+    - Conduct comprehensive web searches on any topic
+    - Fetch and analyze content from specific URLs
+    - Synthesize information from multiple sources
+    - Provide well-structured research summaries
+    - Identify reliable sources and fact-check information
+    
+    Your approach:
+    - Always search multiple sources for comprehensive coverage
+    - Verify information from multiple angles
+    - Present findings in a clear, organized manner
+    - Include source citations when possible
+    - Highlight key insights and trends
+    
+    Always provide thorough, well-researched responses with proper context.
+
+# Agent-specific configuration
+config:
+  max_tokens: 3000
+  temperature: 0.3           # Balanced creativity and accuracy
+  top_p: 0.9
+
+# Research-specific parameters
+reasoning:
+  mode: "plan-act-reflect"
+  plan_depth: 3              # Deeper planning for research
+  reflection: true

@@ -80,11 +80,12 @@ except Exception:  # pragma: no cover
     yaml = None  # Optional dependency
 
 from .base_agent import BaseAgent, LLMProvider, MemoryStore
+from .agent_registry import AgentRegistry
 from .tool_calling_agent import ToolCallingAgent, LLMToolAgent
 from .reasoning_tool_agent import ReasoningToolAgent
 from .adaptive_tool_agent import AdaptiveToolAgent
 from .general_tool_agent import GeneralToolAgent
-from ..tools.registry import registry
+from ..tools.registry import registry, ToolRegistry
 from ..orchestration.interaction_policy import ToolUsePolicy, AutonomyLevel
 from ..orchestration.tool_call_orchestrator import UIAdapter
 
@@ -94,16 +95,18 @@ AgentClass = Type[BaseAgent]
 
 class AgentFactory:
     """
-    Factory to create agents from JSON/YAML configs.
+    Factory to create agents from JSON/YAML configs using AgentRegistry.
 
     External integration points:
+      - agent_registry: AgentRegistry for agent type lookup
+      - tool_registry: ToolRegistry for tool resolution
       - provider_resolver(llm_cfg) -> LLMProvider
       - memory_resolver(mem_cfg) -> MemoryStore
       - ui_resolver(ui_cfg) -> UIAdapter
 
     Example top-level config schema:
       name: "researcher"
-      type: "reasoning"   # "tool-calling" | "reasoning" | "adaptive" | "general" | "llm-tool" (alias)
+      type: "reasoning"   # Must be registered in agent_registry
       llm:
         provider: "openrouter"
         model: "openai/gpt-4o"
@@ -129,21 +132,17 @@ class AgentFactory:
         max_tokens: 2000
     """
 
-    TYPE_MAP: Dict[str, AgentClass] = {
-        "tool-calling": ToolCallingAgent,
-        "llm-tool": LLMToolAgent,        # alias/compat
-        "reasoning": ReasoningToolAgent,
-        "adaptive": AdaptiveToolAgent,
-        "general": GeneralToolAgent,
-    }
-
     def __init__(
         self,
         *,
+        agent_registry: 'AgentRegistry',
+        tool_registry: 'ToolRegistry',
         provider_resolver: Callable[[Dict[str, Any]], LLMProvider],
         memory_resolver: Optional[Callable[[Dict[str, Any]], MemoryStore]] = None,
         ui_resolver: Optional[Callable[[Dict[str, Any]], UIAdapter]] = None,
     ) -> None:
+        self._agent_registry = agent_registry
+        self._tool_registry = tool_registry
         self._provider_resolver = provider_resolver
         self._memory_resolver = memory_resolver
         self._ui_resolver = ui_resolver
@@ -158,9 +157,12 @@ class AgentFactory:
         agent_type = str(cfg.get("type", "tool-calling")).lower()
         name = str(cfg.get("name", "agent"))
 
-        agent_cls = self.TYPE_MAP.get(agent_type)
-        if not agent_cls:
-            raise ValueError(f"Unknown agent type: {agent_type}. Supported: {list(self.TYPE_MAP)}")
+        # Use agent registry instead of hardcoded TYPE_MAP
+        try:
+            agent_cls = self._agent_registry.get_agent_class(agent_type)
+        except ValueError as e:
+            available_types = self._agent_registry.list_agent_types()
+            raise ValueError(f"Unknown agent type: {agent_type}. Available types: {available_types}") from e
 
         llm_cfg = cfg.get("llm") or {}
         mem_cfg = cfg.get("memory")
@@ -176,7 +178,7 @@ class AgentFactory:
         # Optionally resolve tool objects if tool params are configured at creation time
         # Otherwise, let the agent resolve with allowlist or default to registry
         if isinstance(allowlist, list) and tools_cfg.get("resolve_objects"):
-            tools = [registry.get_tool(n) for n in allowlist if registry.has_tool(n)]
+            tools = [self._tool_registry.get_tool(n) for n in allowlist if self._tool_registry.has_tool(n)]
 
         prompts_cfg = (cfg.get("prompts") or {})
         system_prompt = prompts_cfg.get("system")
@@ -184,9 +186,11 @@ class AgentFactory:
         policy_cfg = (cfg.get("policy") or {})
         autonomy = str(policy_cfg.get("autonomy", "auto")).lower()
         autonomy_map = {
-            "manual": AutonomyLevel.manual,
-            "assisted": AutonomyLevel.assisted,
+            "confirm": AutonomyLevel.confirm,
+            "assisted": AutonomyLevel.confirm,  # Map assisted to confirm
+            "manual": AutonomyLevel.confirm,    # Map manual to confirm
             "auto": AutonomyLevel.auto,
+            "never": AutonomyLevel.never,
         }
         policy = ToolUsePolicy(
             autonomy=autonomy_map.get(autonomy, AutonomyLevel.auto),
@@ -207,21 +211,110 @@ class AgentFactory:
             agent_config["adaptation"] = cfg["adaptation"]
 
         # Construct the agent
-        agent = agent_cls(
-            name=name,
-            config=agent_config,
-            llm=llm,
-            tools=tools,
-            memory=memory,
-            policy=policy,
-            ui=ui,
-            system_prompt=system_prompt,
-            tool_allowlist=allowlist if tools is None else None,
-        )
+        if agent_type == "master":
+            # MasterAgent needs special handling - pass available agents
+            # For now, create some default agents for Genesis to use
+            available_agents = self._create_default_agents_for_genesis()
+            agent = agent_cls(
+                name=name,
+                config=agent_config,
+                llm=llm,
+                tools=tools,
+                memory=memory,
+                available_agents=available_agents,
+                policy=policy,
+                ui=ui,
+                system_prompt=system_prompt,
+            )
+        else:
+            # Regular agents
+            agent = agent_cls(
+                name=name,
+                config=agent_config,
+                llm=llm,
+                tools=tools,
+                memory=memory,
+                policy=policy,
+                ui=ui,
+                system_prompt=system_prompt,
+                tool_allowlist=allowlist if tools is None else None,
+            )
 
         return agent
 
     # --------------------------- Helpers --------------------------------------
+
+    def _create_default_agents_for_genesis(self) -> Dict[str, BaseAgent]:
+        """Create default agents for Genesis to delegate to."""
+        available_agents = {}
+        
+        # Create a comprehensive team of specialized agents for Genesis
+        default_agent_configs = [
+            {
+                'type': 'general',
+                'name': 'general_assistant',
+                'llm': {'provider': 'openrouter'},
+                'tools': {'allowlist': ['echo', 'fetch'], 'resolve_objects': True},
+                'policy': {'autonomy': 'auto', 'max_steps': 6}
+            },
+            {
+                'type': 'reasoning',
+                'name': 'reasoning_assistant', 
+                'llm': {'provider': 'openrouter'},
+                'tools': {'allowlist': ['echo', 'fetch'], 'resolve_objects': True},
+                'policy': {'autonomy': 'auto', 'max_steps': 6}
+            },
+            {
+                'type': 'research',
+                'name': 'research_assistant',
+                'llm': {'provider': 'openrouter'},
+                'tools': {'allowlist': ['echo', 'fetch'], 'resolve_objects': True},
+                'policy': {'autonomy': 'auto', 'max_steps': 8}
+            },
+            {
+                'type': 'general',
+                'name': 'writing_assistant',
+                'llm': {'provider': 'openrouter'},
+                'tools': {'allowlist': ['echo', 'fetch'], 'resolve_objects': True},
+                'policy': {'autonomy': 'auto', 'max_steps': 8},
+                'prompts': {'system': 'You are a writing assistant specialized in content creation and text generation.'}
+            },
+            {
+                'type': 'reasoning',
+                'name': 'data_analyst',
+                'llm': {'provider': 'openrouter'},
+                'tools': {'allowlist': ['echo', 'fetch'], 'resolve_objects': True},
+                'policy': {'autonomy': 'auto', 'max_steps': 10},
+                'prompts': {'system': 'You are a data analyst specialized in analytical reasoning and statistics.'}
+            },
+            {
+                'type': 'adaptive',
+                'name': 'project_manager',
+                'llm': {'provider': 'openrouter'},
+                'tools': {'allowlist': ['echo', 'fetch'], 'resolve_objects': True},
+                'policy': {'autonomy': 'assisted', 'max_steps': 8},
+                'prompts': {'system': 'You are a project manager specialized in planning and coordination.'}
+            },
+            {
+                'type': 'general',
+                'name': 'creative_designer',
+                'llm': {'provider': 'openrouter'},
+                'tools': {'allowlist': ['echo', 'fetch'], 'resolve_objects': True},
+                'policy': {'autonomy': 'auto', 'max_steps': 8},
+                'prompts': {'system': 'You are a creative designer specialized in innovative thinking and design solutions.'}
+            }
+        ]
+        
+        for config in default_agent_configs:
+            try:
+                agent = self.from_config(config)
+                available_agents[config['name']] = agent
+            except Exception as e:
+                # Skip agents that fail to create
+                print(f"Warning: Failed to create agent {config['name']}: {e}")
+                continue
+        
+        return available_agents
 
     @staticmethod
     def _load(path: str) -> Dict[str, Any]:

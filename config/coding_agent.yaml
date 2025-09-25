@@ -1,0 +1,39 @@
+name: "code_assistant"
+type: "general"             # still a general-purpose agent
+provider: "openrouter"       # LLM provider from providers.yaml
+
+# Tools the agent can use
+tools:
+  allowlist:
+    - "code_run"            # run code snippets
+    - "web_search"          # search for docs or error solutions
+    - "notepad"             # store code snippets or notes
+    - "github_lookup"       # search GitHub repositories (if available)
+  resolve_objects: true       # resolve actual tool objects from registry
+
+# Policy settings
+policy:
+  autonomy: "assisted"        # agent can suggest changes before executing
+  max_steps: 8               # limit planning chain length
+
+# System prompt for coding behavior
+prompts:
+  system: |
+    You are a coding assistant AI.
+    - You can write and debug Python, C++, JavaScript.
+    - You provide concise explanations of errors and fixes.
+    - You can optimize code for readability and performance.
+    - You can suggest libraries, APIs, and frameworks.
+    - Always respond with clean, actionable code snippets.
+
+# Agent-specific configuration
+config:
+  max_tokens: 2000
+  temperature: 0.2           # lower temperature for more deterministic answers
+  top_p: 0.9
+
+# Optional reasoning/adaptive parameters
+reasoning:
+  mode: "plan-act-reflect"
+  plan_depth: 2
+  reflection: true
