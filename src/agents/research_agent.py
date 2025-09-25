@@ -24,7 +24,10 @@ class ResearchAgent(BaseAgent):
         llm: Optional[LLMProvider] = None,
         tools: Optional[List[BaseTool]] = None,
         memory: Optional[MemoryStore] = None,
-        **kwargs  # Accept additional parameters that AgentFactory might pass
+        policy: Optional[Any] = None,  # Accept but ignore policy
+        ui: Optional[Any] = None,      # Accept but ignore ui
+        system_prompt: Optional[str] = None,  # Accept but ignore system_prompt
+        **kwargs  # Accept any other parameters
     ) -> None:
         super().__init__(name=name, config=config, llm=llm, tools=tools, memory=memory)
 
@@ -141,12 +144,26 @@ class ResearchAgent(BaseAgent):
         """
         Run an async coroutine in sync context.
         - If no event loop is running, uses asyncio.run
-        - If already inside an event loop, create a task and wait
+        - If already inside an event loop, create a new thread to run the coroutine
         """
+        import asyncio
         try:
             loop = asyncio.get_running_loop()
+            # If we're in an event loop, create a new thread to run the coroutine
+            import concurrent.futures
+            
+            def run_in_thread():
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
+                try:
+                    return new_loop.run_until_complete(coro)
+                finally:
+                    new_loop.close()
+            
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(run_in_thread)
+                return future.result()
+                
         except RuntimeError:
+            # No event loop running, safe to use asyncio.run
             return asyncio.run(coro)
-
-        # If we're already in an event loop, run it safely
-        return loop.run_until_complete(coro)

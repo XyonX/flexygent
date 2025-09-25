@@ -53,18 +53,13 @@ class MasterAgent(BaseAgent):
         
     def _get_orchestrator(self):
         """Get or create the orchestrator when needed."""
-        if self._orchestrator is None:
-            # Create orchestrator with proper LLM provider
-            if self.llm and hasattr(self.llm, 'chat'):
-                self._orchestrator = ToolCallOrchestrator(
-                    llm=self.llm,  # type: ignore[arg-type]
-                    policy=self._policy,
-                    ui=self._ui,
-                    default_system_prompt=self._system_prompt,
-                )
-            else:
-                # Fallback: use direct LLM calls instead of orchestrator
-                return None
+        if self._orchestrator is None and self.llm and hasattr(self.llm, 'chat'):
+            self._orchestrator = ToolCallOrchestrator(
+                llm=self.llm,  # type: ignore[arg-type]
+                policy=self._policy,
+                ui=self._ui,
+                default_system_prompt=self._system_prompt,
+            )
         return self._orchestrator
 
     def _get_default_system_prompt(self) -> str:
@@ -144,13 +139,14 @@ Respond with a JSON analysis.
                 tool_names=[],  # No tools needed for analysis
                 system_prompt="You are Genesis analyzing a task. Provide a structured analysis."
             )
+            analysis_text = response.get("final_response", response.get("final", "Analysis failed"))
         else:
             # Fallback: use direct LLM call
-            response = {"final_response": f"Task analysis: {task} - Basic analysis completed"}
+            analysis_text = f"Task analysis: {task} - Basic analysis completed"
         
         return {
             "task": task,
-            "analysis": response.get("final_response", response.get("final", "Analysis failed")),
+            "analysis": analysis_text,
             "timestamp": "now"
         }
 
@@ -181,13 +177,14 @@ Respond with a JSON strategy.
                 tool_names=[],
                 system_prompt="You are Genesis planning strategy. Provide a structured strategy."
             )
+            strategy_text = response.get("final_response", response.get("final", "Strategy planning failed"))
         else:
             # Fallback: simple strategy selection
             selected_agent = self._select_agent_for_task(task)
-            response = {"final_response": f"Strategy: Delegate to {selected_agent} for task: {task}"}
+            strategy_text = f"Strategy: Delegate to {selected_agent} for task: {task}"
         
         return {
-            "reasoning": response.get("final_response", response.get("final", "Strategy planning failed")),
+            "reasoning": strategy_text,
             "available_agents": available_agent_names,
             "coordination_needed": len(available_agent_names) > 1
         }
@@ -295,11 +292,12 @@ Provide a clear, comprehensive response that addresses the original task.
                 tool_names=[],
                 system_prompt="You are Genesis synthesizing results. Provide a comprehensive final response."
             )
+            synthesis_text = response.get("final_response", response.get("final", "Synthesis failed"))
         else:
             # Fallback: simple synthesis
-            response = {"final_response": f"Task '{task}' completed. Results: {results}"}
+            synthesis_text = f"Task '{task}' completed. Results: {results}"
         
-        return response.get("final_response", response.get("final", "Synthesis failed"))
+        return synthesis_text
 
     def handle_tool_calls(self, tool_name: str, payload: Dict[str, Any]) -> Any:
         """Handle tool calls for Genesis itself."""
@@ -329,10 +327,8 @@ Provide a clear, comprehensive response that addresses the original task.
         try:
             # Check if we're already in an event loop
             loop = asyncio.get_running_loop()
-            # If we're in an event loop, we need to use a different approach
-            # Create a new thread to run the coroutine
+            # If we're in an event loop, create a new thread to run the coroutine
             import concurrent.futures
-            import threading
             
             def run_in_thread():
                 new_loop = asyncio.new_event_loop()
