@@ -208,7 +208,7 @@ class OpenRouterProvider:
         *,
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
-        model: str = "qwen/qwen3-coder:free",
+        model: str = "x-ai/grok-4-fast:free",
         system_prompt: Optional[str] = None,
         temperature: float = 0.2,
         max_tokens: Optional[int] = None,
@@ -257,7 +257,7 @@ class OpenRouterProvider:
             os.environ.get("OPENROUTER_BASE_URL")
             or (cfg.get("base_url") or "https://openrouter.ai/api/v1")
         )
-        model = str(cfg.get("model") or "qwen/qwen3-coder:free")
+        model = str(cfg.get("model") or "x-ai/grok-4-fast:free")
         system_prompt = cfg.get("system_prompt") if isinstance(cfg.get("system_prompt"), str) else None  # type: ignore
         temperature = float(cfg.get("temperature") or 0.2)
 

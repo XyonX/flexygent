@@ -2,13 +2,13 @@ llm:
   openrouter:
     api_key_env: OPENROUTER_API_KEY
     base_url: https://openrouter.ai/api/v1
-    model: z-ai/glm-4.5-air:free
+    model: x-ai/grok-4-fast:free
     system_prompt: "You are a concise research assistant."
     temperature: 0.2
     request_timeout: 60.0
     headers:
       X-Title: "FlexyGent"
-    
+
   cloudflare:
     api_key_env: CLOUDFLARE_API_KEY
     base_url: https://api.cloudflare.com/client/v4/accounts/c7606f2dbb6168312265ed635bf0db48/ai/v1

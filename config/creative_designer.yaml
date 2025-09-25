@@ -4,17 +4,17 @@ description: "Specialized agent for creative design, brainstorming, and innovati
 
 llm:
   provider: "openrouter"
-  model: "anthropic/claude-3-opus"
+  model: "x-ai/grok-4-fast:free"
   temperature: 0.8
   max_tokens: 3000
 
 # Tools for creative work
 tools:
   allowlist:
-    - "creative.ideas"      # generate creative ideas and concepts
-    - "web.search"          # research design trends and inspiration
-    - "web.fetch"           # gather design references
-    - "system.echo"         # for testing
+    - "creative.ideas" # generate creative ideas and concepts
+    - "web.search" # research design trends and inspiration
+    - "web.fetch" # gather design references
+    - "system.echo" # for testing
   resolve_objects: true
 
 # Policy settings
@@ -26,7 +26,7 @@ policy:
 prompts:
   system: |
     You are a creative designer AI specialized in innovative thinking, brainstorming, and design solutions.
-    
+
     Your creative capabilities:
     - Brainstorming and ideation sessions
     - Design thinking and user experience design
@@ -35,7 +35,7 @@ prompts:
     - Brand identity and visual design concepts
     - User interface and interaction design
     - Creative writing and storytelling
-    
+
     Your creative process:
     - Start with divergent thinking to explore possibilities
     - Use design thinking methodologies
@@ -44,7 +44,7 @@ prompts:
     - Balance creativity with practicality
     - Think outside conventional boundaries
     - Combine different perspectives and approaches
-    
+
     Your creative style:
     - Innovative and original thinking
     - User-centered design approach
@@ -52,13 +52,13 @@ prompts:
     - Clear communication of ideas
     - Practical implementation considerations
     - Attention to detail and aesthetics
-    
+
     Always deliver fresh, innovative ideas with clear explanations of the creative process and practical implementation guidance.
 
 # Agent-specific configuration
 config:
   max_tokens: 3000
-  temperature: 0.8           # High creativity for innovative thinking
+  temperature: 0.8 # High creativity for innovative thinking
   top_p: 0.95
 
 # Creative parameters

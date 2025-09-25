@@ -2,7 +2,7 @@ name: "code_assistant"
 type: "general"             # still a general-purpose agent
 llm:
   provider: "openrouter"
-  model: "anthropic/claude-3-opus"
+  model: "x-ai/grok-4-fast:free"
   temperature: 0.2
 
 # Tools the agent can use - specialized for coding
