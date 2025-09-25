@@ -1,0 +1,42 @@
+name: "daily_assistant"
+type: "general"            # general-purpose agent
+llm:
+  provider: "openrouter"
+  model: "anthropic/claude-3-opus"
+  temperature: 0.2
+
+# Tools the agent can use (optional, depending on registry/tools you have)
+tools:
+  allowlist: 
+    - "web_search"         # to search online
+    - "code_run"           # to run snippets
+    - "calendar"           # manage schedule
+    - "notepad"            # store notes
+    - "email_send"         # send emails
+  resolve_objects: true      # resolve actual tool objects from registry
+
+# Policy settings
+policy:
+  autonomy: "assisted"       # agent can suggest actions, needs confirmation
+  max_steps: 10              # max steps in multi-step plans
+
+# System prompt for agent behavior
+prompts:
+  system: |
+    You are a helpful daily assistant AI.
+    - You can write and debug code in Python, JS, or C++.
+    - You can manage notes, schedule, and emails.
+    - You can provide concise summaries for social media content.
+    - Always be polite, concise, and provide actionable suggestions.
+
+# Agent-specific configuration
+config:
+  max_tokens: 2000
+  temperature: 0.3
+  top_p: 0.9
+
+# Optional reasoning/adaptive parameters
+reasoning:
+  mode: "plan-act-reflect"
+  plan_depth: 2
+  reflection: true
