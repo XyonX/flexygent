@@ -11,9 +11,10 @@ llm:
 # Tools for creative work
 tools:
   allowlist:
-    - "web.search"          # Research design trends and inspiration
-    - "web.fetch"           # Gather design references
-    - "system.echo"         # For testing
+    - "creative.ideas"      # generate creative ideas and concepts
+    - "web.search"          # research design trends and inspiration
+    - "web.fetch"           # gather design references
+    - "system.echo"         # for testing
   resolve_objects: true
 
 # Policy settings

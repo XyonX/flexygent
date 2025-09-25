@@ -11,9 +11,10 @@ llm:
 # Tools for data analysis
 tools:
   allowlist:
-    - "web.search"          # Research data sources
-    - "web.fetch"           # Fetch datasets or reports
-    - "system.echo"         # For testing
+    - "data.analyze"        # analyze data and provide insights
+    - "web.search"          # research data sources
+    - "web.fetch"           # fetch datasets or reports
+    - "system.echo"         # for testing
   resolve_objects: true
 
 # Policy settings

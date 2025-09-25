@@ -15,9 +15,15 @@ This document provides an overview of all available agent configurations in the 
 ### 1. Coding Assistant (`config/coding_agent.yaml`)
 - **Type**: `general`
 - **Purpose**: Code development, debugging, and programming assistance
-- **Tools**: `code_run`, `web_search`, `notepad`, `github_lookup`
+- **Tools**: 
+  - `code.run` - Execute code snippets safely
+  - `code.analyze` - Analyze code quality and provide suggestions
+  - `code.format` - Format code according to style guidelines
+  - `web.search` - Search for documentation and solutions
+  - `web.fetch` - Fetch web content for reference
+  - `system.echo` - Basic system interaction
 - **Temperature**: 0.2 (deterministic)
-- **Policy**: Assisted (asks for confirmation)
+- **Policy**: Auto (can execute code directly)
 
 ### 2. General Purpose (`config/general_purpose.yaml`)
 - **Type**: `general`
@@ -29,7 +35,11 @@ This document provides an overview of all available agent configurations in the 
 ### 3. Research Assistant (`config/research_agent.yaml`)
 - **Type**: `research`
 - **Purpose**: Information gathering, web searches, and research
-- **Tools**: `web.search`, `web.fetch`, `system.echo`
+- **Tools**: 
+  - `web.search` - Comprehensive web search
+  - `web.fetch` - Fetch specific URLs
+  - `research.summarize` - Summarize research findings
+  - `system.echo` - Basic system interaction
 - **Temperature**: 0.3 (balanced)
 - **Policy**: Auto (can search automatically)
 - **Max Steps**: 12 (thorough research)
@@ -37,7 +47,12 @@ This document provides an overview of all available agent configurations in the 
 ### 4. Writing Assistant (`config/writing_agent.yaml`)
 - **Type**: `general`
 - **Purpose**: Content creation, writing, and text generation
-- **Tools**: `web.search`, `web.fetch`, `system.echo`
+- **Tools**: 
+  - `content.generate` - Generate various types of content
+  - `writing.grammar_check` - Check grammar and style
+  - `web.search` - Research for writing
+  - `web.fetch` - Gather reference materials
+  - `system.echo` - Basic system interaction
 - **Temperature**: 0.7 (high creativity)
 - **Policy**: Auto
 - **Specialties**: Creative writing, technical writing, business writing, academic writing
@@ -45,7 +60,11 @@ This document provides an overview of all available agent configurations in the 
 ### 5. Data Analyst (`config/data_analyst.yaml`)
 - **Type**: `reasoning`
 - **Purpose**: Data analysis, statistics, and analytical reasoning
-- **Tools**: `web.search`, `web.fetch`, `system.echo`
+- **Tools**: 
+  - `data.analyze` - Analyze data and provide insights
+  - `web.search` - Research data sources
+  - `web.fetch` - Fetch datasets or reports
+  - `system.echo` - Basic system interaction
 - **Temperature**: 0.1 (precise analysis)
 - **Policy**: Auto
 - **Max Steps**: 15 (complex analysis)
@@ -54,7 +73,11 @@ This document provides an overview of all available agent configurations in the 
 ### 6. Project Manager (`config/project_manager.yaml`)
 - **Type**: `adaptive`
 - **Purpose**: Project planning, coordination, and task management
-- **Tools**: `web.search`, `web.fetch`, `system.echo`
+- **Tools**: 
+  - `project.plan` - Create project plans and timelines
+  - `web.search` - Research best practices
+  - `web.fetch` - Gather project templates
+  - `system.echo` - Basic system interaction
 - **Temperature**: 0.4 (balanced)
 - **Policy**: Assisted (asks for confirmation on major decisions)
 - **Max Steps**: 12
@@ -63,7 +86,11 @@ This document provides an overview of all available agent configurations in the 
 ### 7. Creative Designer (`config/creative_designer.yaml`)
 - **Type**: `general`
 - **Purpose**: Creative design, brainstorming, and innovative solutions
-- **Tools**: `web.search`, `web.fetch`, `system.echo`
+- **Tools**: 
+  - `creative.ideas` - Generate creative ideas and concepts
+  - `web.search` - Research design trends and inspiration
+  - `web.fetch` - Gather design references
+  - `system.echo` - Basic system interaction
 - **Temperature**: 0.8 (high creativity)
 - **Policy**: Auto
 - **Specialties**: Brainstorming, design thinking, innovation, concept development

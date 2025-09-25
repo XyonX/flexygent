@@ -13,6 +13,8 @@ tools:
   allowlist:
     - "web.search"          # Search the web for information
     - "web.fetch"           # Fetch specific URLs
+    - "research.summarize"   # Summarize research findings
+    - "research.web_search" # Additional research search tool
     - "system.echo"         # For testing and debugging
   resolve_objects: true
 

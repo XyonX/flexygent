@@ -11,9 +11,11 @@ llm:
 # Tools for writing tasks
 tools:
   allowlist:
-    - "web.search"          # Research for writing
-    - "web.fetch"           # Gather reference materials
-    - "system.echo"         # For testing
+    - "content.generate"     # generate various types of content
+    - "writing.grammar_check" # check grammar and style
+    - "web.search"          # research for writing
+    - "web.fetch"           # gather reference materials
+    - "system.echo"         # for testing
   resolve_objects: true
 
 # Policy settings

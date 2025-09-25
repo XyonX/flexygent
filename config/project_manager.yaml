@@ -11,9 +11,10 @@ llm:
 # Tools for project management
 tools:
   allowlist:
-    - "web.search"          # Research best practices
-    - "web.fetch"           # Gather project templates
-    - "system.echo"         # For testing
+    - "project.plan"        # create project plans and timelines
+    - "web.search"          # research best practices
+    - "web.fetch"           # gather project templates
+    - "system.echo"         # for testing
   resolve_objects: true
 
 # Policy settings

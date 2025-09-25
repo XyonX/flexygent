@@ -1,39 +1,45 @@
 name: "code_assistant"
 type: "general"             # still a general-purpose agent
-provider: "openrouter"       # LLM provider from providers.yaml
+llm:
+  provider: "openrouter"
+  model: "anthropic/claude-3-opus"
+  temperature: 0.2
 
-# Tools the agent can use
+# Tools the agent can use - specialized for coding
 tools:
   allowlist:
-    - "code_run"            # run code snippets
-    - "web_search"          # search for docs or error solutions
-    - "notepad"             # store code snippets or notes
-    - "github_lookup"       # search GitHub repositories (if available)
+    - "code.run"            # execute code snippets safely
+    - "code.analyze"        # analyze code quality and provide suggestions
+    - "code.format"         # format code according to style guidelines
+    - "web.search"          # search for documentation and solutions
+    - "web.fetch"           # fetch web content for reference
+    - "system.echo"         # basic system interaction
   resolve_objects: true       # resolve actual tool objects from registry
 
 # Policy settings
 policy:
-  autonomy: "assisted"        # agent can suggest changes before executing
-  max_steps: 8               # limit planning chain length
+  autonomy: "auto"          # agent can execute code directly
+  max_steps: 10             # allow more steps for complex coding tasks
 
 # System prompt for coding behavior
 prompts:
   system: |
-    You are a coding assistant AI.
-    - You can write and debug Python, C++, JavaScript.
-    - You provide concise explanations of errors and fixes.
-    - You can optimize code for readability and performance.
-    - You can suggest libraries, APIs, and frameworks.
-    - Always respond with clean, actionable code snippets.
+    You are a coding assistant AI specialized in software development.
+    - You can write, debug, analyze, and format code in multiple languages
+    - You provide detailed explanations of code behavior and optimizations
+    - You can execute code snippets safely and analyze their output
+    - You suggest best practices, design patterns, and performance improvements
+    - You can format code according to style guidelines (PEP8, etc.)
+    - Always provide clean, well-documented, and efficient code solutions
 
 # Agent-specific configuration
 config:
-  max_tokens: 2000
+  max_tokens: 3000
   temperature: 0.2           # lower temperature for more deterministic answers
   top_p: 0.9
 
 # Optional reasoning/adaptive parameters
 reasoning:
   mode: "plan-act-reflect"
-  plan_depth: 2
+  plan_depth: 3
   reflection: true
