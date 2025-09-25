@@ -108,11 +108,30 @@ class ToolCallingAgent(BaseAgent):
     # --------------------------------------------------------------------------
 
     def _run_sync(self, coro):
+        """Run async coroutine synchronously, handling existing event loops."""
         try:
+            # Check if we're already in an event loop
             loop = asyncio.get_running_loop()
+            # If we're in an event loop, we need to use a different approach
+            # Create a new thread to run the coroutine
+            import concurrent.futures
+            import threading
+            
+            def run_in_thread():
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
+                try:
+                    return new_loop.run_until_complete(coro)
+                finally:
+                    new_loop.close()
+            
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(run_in_thread)
+                return future.result()
+                
         except RuntimeError:
+            # No event loop running, safe to use asyncio.run
             return asyncio.run(coro)
-        return loop.run_until_complete(coro)
 
 
 # Backward compatibility alias

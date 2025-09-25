@@ -24,6 +24,7 @@ class ResearchAgent(BaseAgent):
         llm: Optional[LLMProvider] = None,
         tools: Optional[List[BaseTool]] = None,
         memory: Optional[MemoryStore] = None,
+        **kwargs  # Accept additional parameters that AgentFactory might pass
     ) -> None:
         super().__init__(name=name, config=config, llm=llm, tools=tools, memory=memory)
 
