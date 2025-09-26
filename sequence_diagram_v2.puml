@@ -1,0 +1,192 @@
+@startuml
+title Flexygent System Sequence Diagram v2
+
+actor User
+participant AgentFactory
+participant AgentRegistry
+participant ToolRegistry
+participant EnhancedProviderResolver
+participant "Specialized Agent" as Agent
+participant ToolCallOrchestrator
+participant OpenRouterProvider
+participant "BaseTool" as Tool
+participant AgentMemory
+participant UIAdapter
+participant "RAG Components" as RAG
+
+' === Initialization Phase ===
+User -> AgentFactory: create_from_config(config)
+activate AgentFactory
+
+AgentFactory -> AgentRegistry: get_agent_class(agent_type)
+AgentRegistry --> AgentFactory: agent_class
+
+AgentFactory -> ToolRegistry: get_tools_for_agent(agent_name, policy)
+ToolRegistry --> AgentFactory: available_tools
+
+AgentFactory -> EnhancedProviderResolver: resolve_provider(agent_type, task_requirements)
+EnhancedProviderResolver --> AgentFactory: provider_instance
+
+AgentFactory -> AgentMemory: initialize(short_term, long_term)
+AgentMemory --> AgentFactory: memory_instance
+
+AgentFactory -> Agent: create(agent_class, llm, tools, memory, policy, ui)
+activate Agent
+Agent --> AgentFactory: agent_instance
+deactivate Agent
+
+AgentFactory --> User: agent_instance
+deactivate AgentFactory
+
+' === Task Processing Phase ===
+User -> Agent: process_task(task)
+activate Agent
+
+' === Agent-Specific Processing ===
+alt ToolCallingAgent or Specialized Agent
+  Agent -> AgentMemory: get_recent_short("messages", n)
+  AgentMemory --> Agent: recent_messages
+  
+  Agent -> ToolCallOrchestrator: run(user_message, tool_names, system_prompt)
+  activate ToolCallOrchestrator
+  
+  ToolCallOrchestrator -> ToolCallOrchestrator: _filter_tools(tool_names)
+  
+  ToolCallOrchestrator -> OpenRouterProvider: chat(messages, tools)
+  activate OpenRouterProvider
+  OpenRouterProvider --> ToolCallOrchestrator: response with tool calls
+  deactivate OpenRouterProvider
+  
+  ' === Tool Orchestration Loop ===
+  loop for each tool call
+    alt if policy requires confirmation
+      ToolCallOrchestrator -> UIAdapter: confirm_tool_call(tool_name, arguments, reason)
+      UIAdapter --> User: request confirmation
+      User --> UIAdapter: confirm/deny
+      UIAdapter --> ToolCallOrchestrator: user decision
+    end
+    
+    ToolCallOrchestrator -> Tool: execute(params, context)
+    activate Tool
+    Tool --> ToolCallOrchestrator: tool execution result
+    deactivate Tool
+    
+    ToolCallOrchestrator -> ToolCallOrchestrator: _tool_message(name, tool_call_id, content)
+  end
+  
+  ToolCallOrchestrator --> Agent: tool execution results
+  deactivate ToolCallOrchestrator
+  
+  Agent -> AgentMemory: append_short("tool_calls", result)
+  
+  Agent -> OpenRouterProvider: chat(messages with tool results)
+  activate OpenRouterProvider
+  OpenRouterProvider --> Agent: updated response
+  deactivate OpenRouterProvider
+
+else ResearchAgent
+  Agent -> Tool: web.search(query, max_results, safe)
+  activate Tool
+  Tool --> Agent: search_results
+  deactivate Tool
+  
+  Agent -> Tool: web.scrape(url, css_selectors, max_chars)
+  activate Tool
+  Tool --> Agent: scraped_content
+  deactivate Tool
+  
+  Agent -> OpenRouterProvider: send_message(summary_prompt)
+  activate OpenRouterProvider
+  OpenRouterProvider --> Agent: summary
+  deactivate OpenRouterProvider
+  
+  Agent -> AgentMemory: store("last_research", research_data)
+
+else RAGAgent
+  Agent -> RAG: rag.query(index_dir, query, top_k, model_name)
+  activate RAG
+  RAG -> RAG: embed_query(query)
+  RAG -> RAG: search_vector_store(embeddings, top_k)
+  RAG --> Agent: retrieved_chunks
+  deactivate RAG
+  
+  Agent -> OpenRouterProvider: send_message(contextualized_prompt)
+  activate OpenRouterProvider
+  OpenRouterProvider --> Agent: response
+  deactivate OpenRouterProvider
+
+else MasterAgent
+  Agent -> Agent: _analyze_task(task)
+  Agent -> Agent: _delegate_to_agent(selected_agent, task)
+  activate Agent
+  Agent --> Agent: delegated_result
+  deactivate Agent
+  
+  Agent -> Agent: _aggregate_results(results)
+  Agent -> AgentMemory: store_long("master_workflow", workflow_data)
+
+else AdaptiveToolAgent
+  Agent -> Agent: _load_tool_stats()
+  Agent -> Agent: _prioritize_tools()
+  
+  ' Execute with prioritized tools
+  Agent -> ToolCallOrchestrator: run(user_message, prioritized_tools)
+  activate ToolCallOrchestrator
+  ToolCallOrchestrator --> Agent: execution_results
+  deactivate ToolCallOrchestrator
+  
+  Agent -> Agent: record_outcome(success, tools_used)
+  Agent -> Agent: _persist_tool_stats()
+
+else ReasoningToolAgent
+  Agent -> Agent: _build_system_prompt() with reasoning_mode
+  
+  ' Execute with reasoning-enhanced prompt
+  Agent -> ToolCallOrchestrator: run(user_message, tools, reasoning_prompt)
+  activate ToolCallOrchestrator
+  ToolCallOrchestrator --> Agent: execution_results
+  deactivate ToolCallOrchestrator
+  
+  ' Optional reflection step
+  alt if mode == "plan-act-reflect"
+    Agent -> OpenRouterProvider: chat(reflection_prompt)
+    activate OpenRouterProvider
+    OpenRouterProvider --> Agent: reflection_result
+    deactivate OpenRouterProvider
+  end
+
+end
+
+' === Memory Storage ===
+Agent -> AgentMemory: store_long(task_id, conversation, metadata)
+
+' === Specialized Agent Post-Processing ===
+alt AdaptiveToolAgent
+  Agent -> Agent: on_task_complete(task, result)
+  Agent -> Agent: evaluate_success(result)
+  Agent -> Agent: record_outcome(success, tools_used)
+end
+
+Agent --> User: final_response
+deactivate Agent
+
+' === RAG Indexing Flow (Separate) ===
+note over User, RAG
+  RAG Indexing can happen independently:
+  1. User provides documents/files
+  2. RagIndexTool processes and chunks content
+  3. EmbeddingProvider creates embeddings
+  4. LocalNumpyVectorStore stores vectors
+  5. Ready for RAGAgent queries
+end note
+
+User -> RAG: rag.index(index_dir, paths, chunk_size, model_name)
+activate RAG
+RAG -> RAG: load_files(paths)
+RAG -> RAG: split_text(chunk_size, chunk_overlap)
+RAG -> RAG: embed_texts(chunks)
+RAG -> RAG: store_vectors(embeddings, texts)
+RAG --> User: indexing_complete
+deactivate RAG
+
+@enduml

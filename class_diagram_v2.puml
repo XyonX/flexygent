@@ -1,0 +1,563 @@
+@startuml
+title Flexygent Class Diagram v2
+
+' ========== LLM Providers Section ==========
+
+interface LLMProvider {
+  + send_message(message: str): Any
+  + stream_message(message: str): Iterable[Any]
+}
+
+interface ChatLLMProvider {
+  + chat(messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]] = None, tool_choice: Optional[Any] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, extra_headers: Optional[Dict[str, str]] = None, timeout: Optional[float] = None): Dict[str, Any]
+  + stream_chat(messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]] = None, tool_choice: Optional[Any] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, extra_headers: Optional[Dict[str, str]] = None, timeout: Optional[float] = None): Iterable[Any]
+}
+
+class SimpleLLMProvider {
+  - max_output_chars: int = 800
+  + __init__(max_output_chars: int = 800)
+  + send_message(message: str): str
+  + stream_message(message: str): Generator[str, None, None]
+}
+
+class OpenRouterProvider {
+  - client: OpenAI
+  - model: str = "qwen/qwen3-coder:free"
+  - system_prompt: Optional[str]
+  - temperature: float = 0.2
+  - max_tokens: Optional[int]
+  - request_timeout: float = 60.0
+  - extra_headers: Dict[str, str]
+  + __init__(api_key: Optional[str] = None, base_url: Optional[str] = None, model: str = "qwen/qwen3-coder:free", system_prompt: Optional[str] = None, temperature: float = 0.2, max_tokens: Optional[int] = None, request_timeout: float = 60.0, extra_headers: Optional[Dict[str, str]] = None)
+  + from_config(cfg: Dict[str, object]): OpenRouterProvider
+  + send_message(message: str): str
+  + stream_message(message: str): Iterable[str]
+  + chat(messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]] = None, tool_choice: Optional[Any] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, extra_headers: Optional[Dict[str, str]] = None, timeout: Optional[float] = None): Dict[str, Any]
+  + stream_chat(messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]] = None, tool_choice: Optional[Any] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, extra_headers: Optional[Dict[str, str]] = None, timeout: Optional[float] = None): Iterable[Any]
+}
+
+class EnhancedProviderResolver {
+  - providers: Dict[str, ProviderConfig]
+  - selection_strategy: SelectionStrategy
+  + __init__(config_path: Optional[str] = None)
+  + resolve_provider(agent_type: str, task_requirements: Optional[Dict[str, Any]] = None, max_cost: Optional[float] = None): Tuple[str, str, ModelInfo]
+  + get_available_models(provider_name: Optional[str] = None): Dict[str, List[ModelInfo]]
+  + suggest_models(agent_type: str, task_requirements: Optional[Dict[str, Any]] = None, max_cost: Optional[float] = None): List[Tuple[str, str, ModelInfo]]
+}
+
+OpenRouterProvider ..|> LLMProvider
+OpenRouterProvider ..|> ChatLLMProvider
+SimpleLLMProvider ..|> LLMProvider
+EnhancedProviderResolver ..> OpenRouterProvider
+
+' ========== Tools Section ==========
+
+abstract class BaseTool {
+  - name: str
+  - description: str
+  - input_model: Type[TIn]
+  - output_model: Type[TOut]
+  - timeout_seconds: Optional[float] = 30.0
+  - max_concurrency: Optional[int]
+  - requires_network: bool = False
+  - requires_filesystem: bool = False
+  - tags: Set[str] = frozenset()
+  + __init__()
+  + get_schema(): Dict[str, Any]
+  + to_descriptor(): ToolDescriptor
+  + __call__(data: Union[Dict[str, Any], TIn], context: Optional[Dict[str, Any]] = None): TOut
+  + execute(params: TIn, context: Optional[Dict[str, Any]] = None): TOut
+  - _validate_input(data: Union[Dict[str, Any], TIn]): TIn
+  - _execute_with_handling(params: TIn, context: Optional[Dict[str, Any]]): TOut
+  - _maybe_timeout(coro_factory): TOut
+}
+
+class ToolRegistry {
+  - _tools: Dict[str, BaseTool]
+  + __init__()
+  + register_tool(tool: BaseTool): None
+  + bulk_register(tools: Iterable[BaseTool]): None
+  + get_tool(name: str): BaseTool
+  + has_tool(name: str): bool
+  + list_tool_names(tags: Optional[Set[str]] = None): List[str]
+  + list_tools(tags: Optional[Set[str]] = None): List[BaseTool]
+  + list_descriptors(tags: Optional[Set[str]] = None): List[ToolDescriptor]
+  + get_llm_function_specs(tool_names: Optional[Sequence[str]] = None): List[dict]
+  + get_tools_for_agent(agent_name: str, policy: Optional[Dict[str, Sequence[str]]] = None, fallback_tags: Optional[Set[str]] = None): List[BaseTool]
+}
+
+' ========== Tool Categories ==========
+
+package "System Tools" {
+  class EchoTool {
+    + execute(params: EchoInput, context: Optional[dict] = None): EchoOutput
+  }
+}
+
+package "Web Tools" {
+  class FetchTool {
+    + execute(params: FetchInput, context: Optional[dict] = None): FetchOutput
+  }
+  class SearchTool {
+    + execute(params: SearchInput, context: Optional[dict] = None): SearchOutput
+  }
+  class ScraperTool {
+    + execute(params: ScraperInput, context: Optional[dict] = None): ScraperOutput
+  }
+}
+
+package "Coding Tools" {
+  class CodeRunTool {
+    + execute(params: CodeRunInput, context: Optional[dict] = None): CodeRunOutput
+  }
+  class CodeAnalyzeTool {
+    + execute(params: CodeAnalyzeInput, context: Optional[dict] = None): CodeAnalyzeOutput
+  }
+  class CodeFormatTool {
+    + execute(params: CodeFormatInput, context: Optional[dict] = None): CodeFormatOutput
+  }
+}
+
+package "Research Tools" {
+  class WebSearchTool {
+    + execute(params: WebSearchInput, context: Optional[dict] = None): WebSearchOutput
+  }
+  class ResearchSummarizeTool {
+    + execute(params: ResearchSummarizeInput, context: Optional[dict] = None): ResearchSummarizeOutput
+  }
+}
+
+package "Writing Tools" {
+  class ContentGenerateTool {
+    + execute(params: ContentGenerateInput, context: Optional[dict] = None): ContentGenerateOutput
+  }
+  class GrammarCheckTool {
+    + execute(params: GrammarCheckInput, context: Optional[dict] = None): GrammarCheckOutput
+  }
+}
+
+package "Data Tools" {
+  class DataAnalyzeTool {
+    + execute(params: DataAnalyzeInput, context: Optional[dict] = None): DataAnalyzeOutput
+  }
+}
+
+package "Project Tools" {
+  class ProjectPlanTool {
+    + execute(params: ProjectPlanInput, context: Optional[dict] = None): ProjectPlanOutput
+  }
+}
+
+package "Creative Tools" {
+  class CreativeIdeasTool {
+    + execute(params: CreativeIdeasInput, context: Optional[dict] = None): CreativeIdeasOutput
+  }
+}
+
+package "RAG Tools" {
+  class RagIndexTool {
+    + execute(params: RagIndexInput, context: Optional[dict] = None): RagIndexOutput
+  }
+  class RagQueryTool {
+    + execute(params: RagQueryInput, context: Optional[dict] = None): RagQueryOutput
+  }
+}
+
+package "UI Tools" {
+  class AskUserTool {
+    + execute(params: AskInput, context: Optional[dict] = None): AskOutput
+  }
+}
+
+EchoTool --|> BaseTool
+FetchTool --|> BaseTool
+SearchTool --|> BaseTool
+ScraperTool --|> BaseTool
+CodeRunTool --|> BaseTool
+CodeAnalyzeTool --|> BaseTool
+CodeFormatTool --|> BaseTool
+WebSearchTool --|> BaseTool
+ResearchSummarizeTool --|> BaseTool
+ContentGenerateTool --|> BaseTool
+GrammarCheckTool --|> BaseTool
+DataAnalyzeTool --|> BaseTool
+ProjectPlanTool --|> BaseTool
+CreativeIdeasTool --|> BaseTool
+RagIndexTool --|> BaseTool
+RagQueryTool --|> BaseTool
+AskUserTool --|> BaseTool
+ToolRegistry *-- BaseTool
+
+' ========== Agent Management Section ==========
+
+class AgentRegistry {
+  - _agent_classes: Dict[str, Type[BaseAgent]]
+  + __init__()
+  + register(agent_type: str, agent_class: Type[BaseAgent]): None
+  + get_agent_class(agent_type: str): Type[BaseAgent]
+  + list_agent_types(): list
+  + is_registered(agent_type: str): bool
+}
+
+class AgentFactory {
+  - agent_registry: AgentRegistry
+  - tool_registry: ToolRegistry
+  - provider_resolver: Callable[[Dict[str, Any]], LLMProvider]
+  - memory_resolver: Optional[Callable[[Dict[str, Any]], MemoryStore]]
+  - ui_resolver: Optional[Callable[[Dict[str, Any]], UIAdapter]]
+  + __init__(agent_registry: AgentRegistry, tool_registry: ToolRegistry, provider_resolver: Callable, memory_resolver: Optional[Callable] = None, ui_resolver: Optional[Callable] = None)
+  + create_from_config(config: Dict[str, Any]): BaseAgent
+}
+
+AgentFactory *-- AgentRegistry
+AgentFactory *-- ToolRegistry
+AgentFactory ..> EnhancedProviderResolver
+AgentRegistry *-- BaseAgent
+
+' ========== Orchestration Section ==========
+
+class ToolCallOrchestrator {
+  - llm: OpenRouterProvider
+  - policy: ToolUsePolicy
+  - ui: UIAdapter
+  - default_system_prompt: str
+  + __init__(llm: OpenRouterProvider, policy: Optional[ToolUsePolicy] = None, ui: Optional[UIAdapter] = None, default_system_prompt: Optional[str] = None)
+  + run(user_message: str, tool_names: List[str], system_prompt: Optional[str] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, context: Optional[Dict[str, Any]] = None): Dict[str, Any]
+  - _filter_tools(tool_names: List[str]): List[str]
+  - _execute_tool_calls(tool_calls: List[Dict[str, Any]], allowed: List[str], context: Optional[Dict[str, Any]]): List[Dict[str, Any]]
+  - _tool_message(name: str, tool_call_id: str, content: Any): Dict[str, Any]
+}
+
+class NoopUIAdapter {
+  + confirm_tool_call(tool_name: str, arguments: Dict[str, Any], reason: str): bool
+  + ask_user(question: str, options: Optional[List[str]] = None, allow_free_text: bool = True): str
+  + emit_event(kind: str, payload: Dict[str, Any]): None
+}
+
+ToolCallOrchestrator ..> ToolUsePolicy
+ToolCallOrchestrator ..> UIAdapter
+ToolCallOrchestrator ..> OpenRouterProvider
+ToolCallOrchestrator ..> ToolRegistry
+ToolCallingAgent ..> ToolCallOrchestrator
+BaseAgent <|-- ToolCallingAgent
+
+' ========== Memory Section ==========
+
+interface ShortTermMemoryProtocol {
+  + append(key: str, value: Any): None
+  + get_recent(key: str, n: int): List[Any]
+  + prune(key: str, max_size: int): None
+}
+
+interface LongTermMemoryProtocol {
+  + store(key: str, value: Any, metadata: Dict): None
+  + search(query: str, limit: int): List[Dict]
+  + delete(key: str): None
+}
+
+class AgentMemory {
+  - short_term: ShortTermMemoryProtocol
+  - long_term: LongTermMemoryProtocol
+  - SHORT_PREFIX: str = "short:"
+  - LONG_PREFIX: str = "long:"
+  + __init__(short_term: Optional, long_term: Optional, enable_long_term: bool = True)
+  + store(key: str, value: Any, metadata: Optional[Dict])
+  + append_short(key: str, value: Any)
+  + get_recent_short(key: str, n: int)
+  + store_long(key: str, value: Any, metadata: Optional[Dict])
+  + search_long(query: str, limit: int)
+}
+
+class InMemoryShortTerm {
+  - _store: Dict[str, deque[str]]
+  + __init__(max_history_per_key: int = 50)
+  + append(key: str, value: Any)
+  + get_recent(key: str, n: int)
+  + prune(key: str, max_size: int)
+  + store(key: str, value: Any)
+  + retrieve(key: str): Any
+  + update(key: str, value: Any)
+}
+
+class FileLongTerm {
+  - file_path: Path = "~/.flexygent/long_term_memory.json"
+  - _store: Dict[str, Dict[str, Any]]
+  + __init__(file_path: str)
+  + store(key: str, value: Any, metadata: Dict)
+  + retrieve(key: str): Any
+  + search(query: str, limit: int)
+  + delete(key: str)
+  + update(key: str, value: Any)
+}
+
+InMemoryShortTerm ..|> ShortTermMemoryProtocol
+FileLongTerm ..|> LongTermMemoryProtocol
+AgentMemory *-- ShortTermMemoryProtocol
+AgentMemory *-- LongTermMemoryProtocol
+BaseAgent o-- AgentMemory
+AgentFactory ..> AgentMemory
+ToolCallOrchestrator ..> AgentMemory
+
+' ========== RAG Section ==========
+
+class EmbeddingProvider {
+  - model_name: str
+  - _model: Any
+  + __init__(model_name: str = "sentence-transformers/all-MiniLM-L6-v2")
+  + embed_texts(texts: List[str]): List[List[float]]
+  + embed_query(text: str): List[float]
+}
+
+class LocalNumpyVectorStore {
+  - index_dir: str
+  - embeddings: Optional[np.ndarray]
+  - texts: Optional[List[str]]
+  + __init__(index_dir: str)
+  + add(embeddings: List[List[float]], texts: List[str]): None
+  + search(query_embedding: List[float], top_k: int = 5): List[SearchResult]
+  + save(): None
+  + load(): None
+}
+
+class SearchResult {
+  + text: str
+  + score: float
+}
+
+EmbeddingProvider ..> LocalNumpyVectorStore
+LocalNumpyVectorStore *-- SearchResult
+RagIndexTool ..> EmbeddingProvider
+RagIndexTool ..> LocalNumpyVectorStore
+RagQueryTool ..> EmbeddingProvider
+RagQueryTool ..> LocalNumpyVectorStore
+
+' ========== BaseAgent Class ==========
+
+class BaseAgent {
+  - name: str
+  - config: Dict[str, Any]
+  - llm: Optional[LLMProvider]
+  - tools: List[Any]
+  - memory: Optional[MemoryStore]
+  - registry: Optional[Any]
+  + __init__(name: str, config: Dict[str, Any], llm: Optional[LLMProvider] = None, tools: Optional[List[Any]] = None, memory: Optional[MemoryStore] = None, registry: Optional[Any] = None)
+  + process_task(task: str): Any
+  + handle_tool_calls(tool_name: str, payload: Dict[str, Any]): Any
+  + update_memory(key: str, value: Any): None
+}
+
+' ========== Specialized Agent Classes ==========
+
+class ToolCallingAgent {
+  - name: str
+  - config: Dict[str, Any]
+  - llm: ChatLLMProvider
+  - tools: List[BaseTool]
+  - memory: MemoryStore
+  - policy: ToolUsePolicy
+  - ui: UIAdapter
+  - system_prompt: str
+  - tool_allowlist: Optional[List[str]]
+  + __init__(name: str, config: Dict[str, Any], llm: Optional[ChatLLMProvider] = None, tools: Optional[List[BaseTool]] = None, memory: Optional[MemoryStore] = None, policy: Optional[ToolUsePolicy] = None, ui: Optional[UIAdapter] = None, system_prompt: Optional[str] = None, tool_allowlist: Optional[List[str]] = None)
+  + process_task(task: str): Any
+  - _process_task_async(task: str): Dict[str, Any]
+  - handle_tool_calls(tool_name: str, payload: Dict[str, Any]): Any
+  - _run_sync()
+  - _build_system_prompt(): Optional[str]
+  - _build_context(task: str): Dict[str, Any]
+}
+
+class LLMToolAgent {
+  - name: str
+  - config: Dict[str, Any]
+  - llm: Optional[LLMProvider]
+  - tools: List[BaseTool]
+  - memory: Optional[MemoryStore]
+  + __init__(name: str, config: Dict[str, Any], llm: Optional[LLMProvider] = None, tools: Optional[List[BaseTool]] = None, memory: Optional[MemoryStore] = None)
+  + process_task(task: str): Any
+  + handle_tool_calls(tool_name: str, payload: Dict[str, Any]): Any
+}
+
+class ReasoningToolAgent {
+  - name: str
+  - config: Dict[str, Any]
+  - llm: ChatLLMProvider
+  - tools: List[BaseTool]
+  - memory: MemoryStore
+  - policy: ToolUsePolicy
+  - ui: UIAdapter
+  - system_prompt: str
+  + __init__(name: str, config: Dict[str, Any], llm: Optional[ChatLLMProvider] = None, tools: Optional[List[BaseTool]] = None, memory: Optional[MemoryStore] = None, policy: Optional[ToolUsePolicy] = None, ui: Optional[UIAdapter] = None, system_prompt: Optional[str] = None, tool_allowlist: Optional[List[str]] = None)
+  + process_task(task: str): Any
+  - _build_system_prompt(): Optional[str]
+  - _build_context(task: str): Dict[str, Any]
+}
+
+class AdaptiveToolAgent {
+  - name: str
+  - config: Dict[str, Any]
+  - llm: ChatLLMProvider
+  - tools: List[BaseTool]
+  - memory: MemoryStore
+  - policy: ToolUsePolicy
+  - ui: UIAdapter
+  - system_prompt: str
+  - _tool_stats: Dict[str, Dict[str, int]]
+  + __init__(name: str, config: Dict[str, Any], llm: Optional[ChatLLMProvider] = None, tools: Optional[List[BaseTool]] = None, memory: Optional[MemoryStore] = None, policy: Optional[ToolUsePolicy] = None, ui: Optional[UIAdapter] = None, system_prompt: Optional[str] = None, tool_allowlist: Optional[List[str]] = None)
+  + process_task(task: str): Any
+  + record_outcome(success: bool, tools_used: Optional[List[str]] = None): None
+  + evaluate_success(result: Dict[str, Any]): Optional[bool]
+  + on_task_complete(task: str, result: Dict[str, Any]): None
+  - _load_tool_stats(): Dict[str, Dict[str, int]]
+  - _persist_tool_stats(): None
+  - _prioritize_tools(): None
+}
+
+class GeneralToolAgent {
+  - name: str
+  - config: Dict[str, Any]
+  - llm: ChatLLMProvider
+  - tools: List[BaseTool]
+  - memory: MemoryStore
+  - policy: ToolUsePolicy
+  - ui: UIAdapter
+  - system_prompt: str
+  + __init__(name: str, config: Dict[str, Any], llm: Optional[ChatLLMProvider] = None, tools: Optional[List[BaseTool]] = None, memory: Optional[MemoryStore] = None, policy: Optional[ToolUsePolicy] = None, ui: Optional[UIAdapter] = None, system_prompt: Optional[str] = None, tool_allowlist: Optional[List[str]] = None)
+  + process_task(task: str): Any
+  - _build_system_prompt(): Optional[str]
+}
+
+class ResearchAgent {
+  - name: str
+  - config: Dict[str, Any]
+  - llm: Optional[LLMProvider]
+  - tools: List[BaseTool]
+  - memory: Optional[MemoryStore]
+  - _tool_by_name: Dict[str, BaseTool]
+  + __init__(name: str, config: Dict[str, Any], llm: Optional[LLMProvider] = None, tools: Optional[List[BaseTool]] = None, memory: Optional[MemoryStore] = None, policy: Optional[Any] = None, ui: Optional[Any] = None, system_prompt: Optional[str] = None, **kwargs)
+  + process_task(task: str): Any
+  + handle_tool_calls(tool_name: str, payload: Dict[str, Any]): Any
+  - _process_task_async(task: str): Dict[str, Any]
+  - _require_tool(name: str): BaseTool
+  - _build_summary_prompt(task: str, search_out: Any, scrape_out: Any): str
+  - _run_sync(coro)
+}
+
+class RAGAgent {
+  - name: str
+  - config: Dict[str, Any]
+  - llm: Optional[LLMProvider]
+  - tools: List[BaseTool]
+  - memory: Optional[MemoryStore]
+  - _tool_by_name: Dict[str, BaseTool]
+  + __init__(name: str, config: Dict[str, Any], llm: Optional[LLMProvider] = None, tools: Optional[List[BaseTool]] = None, memory: Optional[MemoryStore] = None)
+  + process_task(task: str): Any
+  + handle_tool_calls(tool_name: str, payload: Dict[str, Any]): Any
+  - _require_tool(name: str): BaseTool
+}
+
+class MasterAgent {
+  - name: str
+  - config: Dict[str, Any]
+  - llm: Optional[LLMProvider]
+  - tools: List[BaseTool]
+  - memory: Optional[MemoryStore]
+  - _available_agents: Dict[str, BaseAgent]
+  - _system_prompt: str
+  - _orchestrator: Optional[ToolCallOrchestrator]
+  - _policy: ToolUsePolicy
+  - _ui: Optional[UIAdapter]
+  + __init__(name: str, config: Dict[str, Any], llm: Optional[LLMProvider] = None, tools: Optional[List[BaseTool]] = None, memory: Optional[MemoryStore] = None, available_agents: Optional[Dict[str, BaseAgent]] = None, policy: Optional[ToolUsePolicy] = None, ui: Optional[UIAdapter] = None, system_prompt: Optional[str] = None)
+  + process_task(task: str): Any
+  + handle_tool_calls(tool_name: str, payload: Dict[str, Any]): Any
+  - _get_orchestrator(): ToolCallOrchestrator
+  - _get_default_system_prompt(): str
+  - _analyze_task(task: str): Dict[str, Any]
+  - _delegate_to_agent(agent_name: str, task: str): Any
+}
+
+BaseAgent <|-- ToolCallingAgent
+BaseAgent <|-- LLMToolAgent
+BaseAgent <|-- ResearchAgent
+BaseAgent <|-- RAGAgent
+BaseAgent <|-- MasterAgent
+ToolCallingAgent <|-- ReasoningToolAgent
+ToolCallingAgent <|-- AdaptiveToolAgent
+ToolCallingAgent <|-- GeneralToolAgent
+
+' ========== Enumeration ==========
+
+enum AutonomyLevel {
+  auto
+  confirm
+  never
+}
+note right of AutonomyLevel::auto
+  run tools without user confirmation
+end note
+note right of AutonomyLevel::confirm
+  ask for confirmation (all or per tool)
+end note
+note right of AutonomyLevel::never
+  do not expose tools to the LLM
+end note
+
+' ========== ToolUsePolicy Class ==========
+
+class ToolUsePolicy {
+  - autonomy: AutonomyLevel
+  - allow_tools: Optional[Set[str]]
+  - deny_tools: Set[str]
+  - confirm_tools: Set[str]
+  - max_steps: int
+  - max_tool_calls: Optional[int]
+  - parallel_tool_calls: bool
+  - tool_result_truncate: int
+  - max_wall_time_s: Optional[float]
+  + __init__(autonomy: AutonomyLevel = auto, allow_tools: Optional[Set[str]] = None, deny_tools: Set[str] = set(), confirm_tools: Set[str] = set(), max_steps: int = 8, max_tool_calls: Optional[int] = None, parallel_tool_calls: bool = True, tool_result_truncate: int = 8000, max_wall_time_s: Optional[float] = None)
+  + __post_init__()
+}
+
+note right of ToolUsePolicy::allow_tools
+  if set, only these tools are permitted
+end note
+note right of ToolUsePolicy::confirm_tools
+  always confirm these (if autonomy=confirm); empty means "confirm all"
+end note
+note right of ToolUsePolicy::max_tool_calls
+  overall cap on tool calls (None = no cap)
+end note
+note right of ToolUsePolicy::max_wall_time_s
+  optional wall-time budget, enforced by caller
+end note
+
+' ========== UIAdapter Protocol ==========
+
+class UIAdapter {
+  + confirm_tool_call(tool_name: str, arguments: Dict[str, Any], reason: str): bool
+  + ask_user(question: List[str], options: List[str], allow_free_text: bool): str
+  + emit_event(kind: str, payload: Dict[str, Any]): None
+}
+
+' ========== Utils Section ==========
+
+package "Utils (config_loader.py)" {
+}
+
+note as N1
+Utility functions for configuration:
+- load_config(paths: Optional[Iterable[str]] = None): Dict[str, Any]
+  Merges YAML configs from paths (default: config/default.yaml), expands env vars.
+- get_openrouter_cfg(cfg: Dict[str, Any]): Dict[str, Any]
+  Extracts llm.openrouter sub-config.
+- get_llm_provider_cfg(cfg: Dict[str, Any], provider: str): Dict[str, Any]
+  Extracts llm.{provider} sub-config.
+
+Used for agent/provider initialization (e.g., from_config).
+end note
+
+N1 .. "Utils (config_loader.py)"
+OpenRouterProvider ..> "Utils (config_loader.py)"
+BaseAgent ..> "Utils (config_loader.py)"
+
+@enduml
