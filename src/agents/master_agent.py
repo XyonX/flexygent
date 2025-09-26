@@ -119,6 +119,11 @@ Always explain your reasoning and strategy."""
 
     async def _analyze_task(self, task: str) -> Dict[str, Any]:
         """Analyze the task to understand requirements."""
+        print("\n" + "🧠"*20)
+        print("🧠 GENESIS TASK ANALYSIS")
+        print("🧠"*20)
+        print(f"📝 Task: {task}")
+        
         analysis_prompt = f"""
 Analyze this task and determine:
 1. What type of work is required?
@@ -131,18 +136,26 @@ Task: {task}
 Respond with a JSON analysis.
 """
         
+        print(f"🔍 Analysis Prompt: {analysis_prompt[:200]}{'...' if len(analysis_prompt) > 200 else ''}")
+        
         # Use orchestrator for analysis
         orchestrator = self._get_orchestrator()
         if orchestrator:
+            print("🎯 Using orchestrator for analysis...")
             response = await orchestrator.run(
                 user_message=analysis_prompt,
                 tool_names=[],  # No tools needed for analysis
                 system_prompt="You are Genesis analyzing a task. Provide a structured analysis."
             )
             analysis_text = response.get("final_response", response.get("final", "Analysis failed"))
+            print(f"✅ Analysis completed via orchestrator")
         else:
             # Fallback: use direct LLM call
+            print("⚠️  Using fallback direct LLM call...")
             analysis_text = f"Task analysis: {task} - Basic analysis completed"
+        
+        print(f"📊 Analysis Result: {analysis_text[:200]}{'...' if len(analysis_text) > 200 else ''}")
+        print("🧠"*20 + "\n")
         
         return {
             "task": task,
@@ -152,7 +165,12 @@ Respond with a JSON analysis.
 
     async def _determine_strategy(self, task: str, analysis: Dict[str, Any]) -> Dict[str, Any]:
         """Determine which existing agents to use and how to coordinate them."""
+        print("\n" + "🎯"*20)
+        print("🎯 GENESIS STRATEGY PLANNING")
+        print("🎯"*20)
+        
         available_agent_names = list(self._available_agents.keys())
+        print(f"👥 Available Agents: {available_agent_names}")
         
         strategy_prompt = f"""
 Based on this task analysis, determine the best strategy:
@@ -170,18 +188,26 @@ Determine:
 Respond with a JSON strategy.
 """
         
+        print(f"🔍 Strategy Prompt: {strategy_prompt[:200]}{'...' if len(strategy_prompt) > 200 else ''}")
+        
         orchestrator = self._get_orchestrator()
         if orchestrator:
+            print("🎯 Using orchestrator for strategy planning...")
             response = await orchestrator.run(
                 user_message=strategy_prompt,
                 tool_names=[],
                 system_prompt="You are Genesis planning strategy. Provide a structured strategy."
             )
             strategy_text = response.get("final_response", response.get("final", "Strategy planning failed"))
+            print(f"✅ Strategy planning completed via orchestrator")
         else:
             # Fallback: simple strategy selection
+            print("⚠️  Using fallback strategy selection...")
             selected_agent = self._select_agent_for_task(task)
             strategy_text = f"Strategy: Delegate to {selected_agent} for task: {task}"
+        
+        print(f"📊 Strategy Result: {strategy_text[:200]}{'...' if len(strategy_text) > 200 else ''}")
+        print("🎯"*20 + "\n")
         
         return {
             "reasoning": strategy_text,
@@ -191,26 +217,39 @@ Respond with a JSON strategy.
 
     async def _execute_strategy(self, task: str, strategy: Dict[str, Any]) -> Dict[str, Any]:
         """Execute the strategy by delegating to existing agents."""
+        print("\n" + "⚡"*20)
+        print("⚡ GENESIS STRATEGY EXECUTION")
+        print("⚡"*20)
+        print(f"📝 Task: {task}")
+        print(f"🎯 Strategy: {strategy.get('reasoning', 'No strategy')[:100]}{'...' if len(strategy.get('reasoning', '')) > 100 else ''}")
+        
         results = {}
         
         # Select appropriate agent based on task type
         selected_agent_name = self._select_agent_for_task(task)
+        print(f"🤖 Selected Agent: {selected_agent_name}")
         
         if selected_agent_name in self._available_agents:
             agent = self._available_agents[selected_agent_name]
+            print(f"✅ Agent found, delegating task...")
             
             # Delegate the task to the selected agent
             # Check if the agent has an async process_task method
             if hasattr(agent, '_process_task_async'):
+                print(f"🔄 Using async process_task method...")
                 result = await agent._process_task_async(task)
             else:
+                print(f"🔄 Using sync process_task method...")
                 result = agent.process_task(task)
             results[selected_agent_name] = result
+            print(f"✅ Task delegation completed")
             
         else:
             # Fallback: try to use any available agent
+            print(f"⚠️  Selected agent not found, trying fallback...")
             if self._available_agents:
                 first_agent_name = list(self._available_agents.keys())[0]
+                print(f"🔄 Using fallback agent: {first_agent_name}")
                 agent = self._available_agents[first_agent_name]
                 # Check if the agent has an async process_task method
                 if hasattr(agent, '_process_task_async'):
@@ -218,9 +257,14 @@ Respond with a JSON strategy.
                 else:
                     result = agent.process_task(task)
                 results[first_agent_name] = result
+                print(f"✅ Fallback delegation completed")
             else:
+                print(f"❌ No agents available for delegation")
                 results["error"] = "No agents available for delegation"
-            
+        
+        print(f"📊 Execution Results: {str(results)[:200]}{'...' if len(str(results)) > 200 else ''}")
+        print("⚡"*20 + "\n")
+        
         return results
 
     def _select_agent_for_task(self, task: str) -> str:

@@ -327,6 +327,18 @@ class ToolCallOrchestrator:
         max_tokens: Optional[int] = None,
         context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        # Debug: Print orchestrator start
+        print("\n" + "🚀"*20)
+        print("🎯 TOOL CALL ORCHESTRATOR START")
+        print("🚀"*20)
+        print(f"📝 User Message: {user_message[:100]}{'...' if len(user_message) > 100 else ''}")
+        print(f"🔧 Available Tools: {tool_names}")
+        print(f"📋 System Prompt: {(system_prompt or self.default_system_prompt)[:100]}{'...' if len(system_prompt or self.default_system_prompt) > 100 else ''}")
+        print(f"🌡️  Temperature: {temperature}")
+        print(f"📏 Max Tokens: {max_tokens}")
+        print(f"🔄 Max Steps: {self.policy.max_steps}")
+        print("🚀"*20 + "\n")
+        
         tools = self._filter_tools(tool_names)
         messages: List[Dict[str, Any]] = [{"role": "system", "content": system_prompt or self.default_system_prompt},
                                           {"role": "user", "content": user_message}]
@@ -334,6 +346,9 @@ class ToolCallOrchestrator:
         tool_calls_total = 0
 
         for step in range(self.policy.max_steps):
+            print(f"\n🔄 ORCHESTRATOR STEP {step + 1}/{self.policy.max_steps}")
+            print("-" * 40)
+            
             await self.ui.emit_event("assistant_loop_step", {"step": step + 1})
 
             resp = self.llm.chat(messages, tools=specs, tool_choice="auto", temperature=temperature, max_tokens=max_tokens)
@@ -342,22 +357,37 @@ class ToolCallOrchestrator:
             tool_calls = msg.get("tool_calls") or []
             content = msg.get("content")
 
+            # Debug: Print step results
             if content:
+                print(f"💭 Assistant Response: {content[:150]}{'...' if len(content) > 150 else ''}")
                 await self.ui.emit_event("assistant_message", {"content": content})
 
             if tool_calls:
+                print(f"🔧 Tool Calls Requested: {len(tool_calls)}")
+                for i, tc in enumerate(tool_calls):
+                    func_name = tc.get('function', {}).get('name', 'unknown')
+                    print(f"  {i+1}. {func_name}")
+                
                 messages.append({"role": "assistant", "content": content or "", "tool_calls": tool_calls})
                 tool_calls_total += len(tool_calls)
                 if self.policy.max_tool_calls is not None and tool_calls_total > self.policy.max_tool_calls:
+                    print("⚠️  Tool call limit reached!")
                     deny_msg = "Tool call limit reached; provide the best answer without more tools."
                     messages.append({"role": "system", "content": deny_msg})
                     continue
 
+                print("🔄 Executing tool calls...")
                 tool_result_msgs = await self._execute_tool_calls(tool_calls, allowed=tools, context=context)
                 messages.extend(tool_result_msgs)
+                print("✅ Tool calls completed, continuing...")
                 continue
 
             if content:
+                print(f"\n🎉 ORCHESTRATOR COMPLETED")
+                print(f"📊 Final Steps: {step + 1}")
+                print(f"🏁 Finish Reason: {choice.get('finish_reason')}")
+                print("🎉"*20 + "\n")
+                
                 return {
                     "final": content,
                     "messages": messages,
@@ -365,6 +395,7 @@ class ToolCallOrchestrator:
                     "finish_reason": choice.get("finish_reason"),
                 }
 
+            print("⚠️  No content or tool calls, breaking...")
             break
 
         fallback = "[Tool-calling loop ended without a definitive answer.]"
@@ -389,13 +420,21 @@ class ToolCallOrchestrator:
             name = fn.get("name", "")
             args_raw = fn.get("arguments", "") or "{}"
 
+            # Debug: Print tool execution details
+            print(f"\n🔧 EXECUTING TOOL: {name}")
+            print(f"🆔 Call ID: {tc_id}")
+            print(f"📋 Arguments: {args_raw[:200]}{'...' if len(args_raw) > 200 else ''}")
+
             if name not in allowed:
+                print(f"❌ Tool '{name}' not allowed by policy")
                 result = {"error": f"Tool '{name}' is not allowed by policy."}
                 return tc_id, self._tool_message(name, tc_id, result)
 
             try:
                 args = json.loads(args_raw)
+                print(f"✅ Arguments parsed successfully")
             except Exception as e:
+                print(f"❌ Failed to parse arguments: {e}")
                 return tc_id, self._tool_message(name, tc_id, {"error": f"Invalid JSON arguments: {e}", "raw": args_raw})
 
             # Virtual UI tool: route to UI adapter
@@ -418,12 +457,18 @@ class ToolCallOrchestrator:
 
             # Execute the tool
             try:
+                print(f"🔍 Looking up tool: {name}")
                 tool = registry.get_tool(name)
+                print(f"✅ Tool found, executing...")
                 out = await tool(args, context=context)
                 result = out.model_dump() if hasattr(out, "model_dump") else out
+                print(f"✅ Tool execution successful")
+                print(f"📤 Result: {str(result)[:200]}{'...' if len(str(result)) > 200 else ''}")
             except ToolExecutionError as te:
+                print(f"❌ Tool execution error: {te}")
                 result = {"error": str(te)}
             except Exception as e:
+                print(f"❌ Unexpected tool error: {e!r}")
                 result = {"error": f"Unexpected tool error: {e!r}"}
 
             # Truncate long payloads

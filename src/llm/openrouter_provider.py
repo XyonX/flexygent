@@ -334,6 +334,32 @@ class OpenRouterProvider:
         extra_headers: Optional[Dict[str, str]] = None,
         timeout: Optional[float] = None,
     ) -> Dict[str, Any]:
+        # Debug: Print API call details
+        print("\n" + "="*60)
+        print("🔍 OPENROUTER API CALL DEBUG")
+        print("="*60)
+        print(f"📡 Model: {self.model}")
+        print(f"🌡️  Temperature: {temperature if temperature is not None else self.temperature}")
+        print(f"📏 Max Tokens: {max_tokens if max_tokens is not None else self.max_tokens}")
+        print(f"⏱️  Timeout: {timeout if timeout is not None else self.request_timeout}")
+        
+        print(f"\n💬 Messages ({len(messages)}):")
+        for i, msg in enumerate(messages):
+            role = msg.get('role', 'unknown')
+            content = msg.get('content', '')
+            print(f"  {i+1}. [{role.upper()}]: {content[:200]}{'...' if len(content) > 200 else ''}")
+        
+        if tools:
+            print(f"\n🔧 Tools ({len(tools)}):")
+            for i, tool in enumerate(tools):
+                tool_name = tool.get('function', {}).get('name', 'unknown')
+                print(f"  {i+1}. {tool_name}")
+        
+        if tool_choice:
+            print(f"\n🎯 Tool Choice: {tool_choice}")
+        
+        print("="*60)
+        
         resp = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
@@ -345,7 +371,32 @@ class OpenRouterProvider:
             stream=False,
             extra_headers={**self.extra_headers, **(extra_headers or {})},
         )
-        return resp.model_dump()
+        
+        # Debug: Print response details
+        result = resp.model_dump()
+        print("\n📥 API RESPONSE:")
+        print(f"✅ Status: Success")
+        print(f"🆔 ID: {result.get('id', 'N/A')}")
+        print(f"📊 Usage: {result.get('usage', {})}")
+        
+        if result.get('choices'):
+            choice = result['choices'][0]
+            message = choice.get('message', {})
+            content = message.get('content', '')
+            tool_calls = message.get('tool_calls', [])
+            
+            if content:
+                print(f"💭 Content: {content[:200]}{'...' if len(content) > 200 else ''}")
+            
+            if tool_calls:
+                print(f"🔧 Tool Calls ({len(tool_calls)}):")
+                for i, tc in enumerate(tool_calls):
+                    func_name = tc.get('function', {}).get('name', 'unknown')
+                    print(f"  {i+1}. {func_name}")
+        
+        print("="*60 + "\n")
+        
+        return result
 
     def stream_chat(
         self,

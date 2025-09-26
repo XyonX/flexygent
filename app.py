@@ -51,8 +51,8 @@ class FlexygentApp:
         # self.ui_adapter = NoopUIAdapter()
 
         # Step 8: Create resolver functions
-        from src.llm.provider_resolver import create_enhanced_resolver_function
-        llm_provider_resolver = create_enhanced_resolver_function()
+        def llm_provider_resolver(llm_cfg):
+            return OpenRouterProvider.from_config(llm_cfg)
         
         def memory_resolver(mem_cfg):
             # TODO: Implement memory resolver based on config
@@ -80,13 +80,7 @@ class FlexygentApp:
         genesis_config = {
             'type': 'master', 
             'name': 'Genesis',
-            'llm': {
-                'provider': 'openrouter',
-                'agent_type': 'general',
-                'strategy': 'balanced',
-                'temperature': 0.3,
-                'max_tokens': 2000
-            },
+            'llm': llm_provider,  # Pass the LLM config
             'tools': {
                 'allowlist': ['echo', 'fetch'],  # Genesis can use basic tools
                 'resolve_objects': True
