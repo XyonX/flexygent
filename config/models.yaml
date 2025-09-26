@@ -1,0 +1,129 @@
+# Available models configuration for each provider
+# This allows agents to choose models based on cost, performance, or task requirements
+
+providers:
+  openrouter:
+    models:
+      # High-performance models (expensive)
+      "anthropic/claude-3-opus":
+        cost_per_1k_tokens: 0.015
+        performance_tier: "high"
+        max_tokens: 200000
+        capabilities: ["reasoning", "analysis", "creative"]
+        use_cases: ["research", "complex_analysis", "creative_writing"]
+      
+      "openai/gpt-4o":
+        cost_per_1k_tokens: 0.005
+        performance_tier: "high"
+        max_tokens: 128000
+        capabilities: ["reasoning", "analysis", "coding", "creative"]
+        use_cases: ["research", "coding", "analysis", "creative_writing"]
+      
+      # Balanced models (medium cost)
+      "anthropic/claude-3-sonnet":
+        cost_per_1k_tokens: 0.003
+        performance_tier: "medium"
+        max_tokens: 200000
+        capabilities: ["reasoning", "analysis", "creative"]
+        use_cases: ["research", "analysis", "content_generation"]
+      
+      "meta-llama/llama-3.1-70b-instruct":
+        cost_per_1k_tokens: 0.0009
+        performance_tier: "medium"
+        max_tokens: 128000
+        capabilities: ["reasoning", "analysis", "coding"]
+        use_cases: ["general_purpose", "coding", "analysis"]
+      
+      # Cost-effective models (cheap)
+      "x-ai/grok-4-fast:free":
+        cost_per_1k_tokens: 0.0
+        performance_tier: "medium"
+        max_tokens: 128000
+        capabilities: ["reasoning", "analysis", "creative"]
+        use_cases: ["general_purpose", "quick_tasks", "testing"]
+      
+      "google/gemini-pro-1.5":
+        cost_per_1k_tokens: 0.0005
+        performance_tier: "medium"
+        max_tokens: 2000000
+        capabilities: ["reasoning", "analysis", "long_context"]
+        use_cases: ["long_documents", "analysis", "research"]
+
+  cloudflare:
+    models:
+      "@hf/nousresearch/hermes-2-pro-mistral-7b":
+        cost_per_1k_tokens: 0.0001
+        performance_tier: "low"
+        max_tokens: 32000
+        capabilities: ["reasoning", "analysis"]
+        use_cases: ["simple_tasks", "cost_effective", "testing"]
+      
+      "@hf/meta-llama/llama-3.1-8b-instruct":
+        cost_per_1k_tokens: 0.0001
+        performance_tier: "low"
+        max_tokens: 32000
+        capabilities: ["reasoning", "coding"]
+        use_cases: ["simple_coding", "basic_analysis", "testing"]
+      
+      "@hf/mistralai/mistral-7b-instruct-v0.3":
+        cost_per_1k_tokens: 0.0001
+        performance_tier: "low"
+        max_tokens: 32000
+        capabilities: ["reasoning", "analysis"]
+        use_cases: ["general_purpose", "cost_effective"]
+
+  vercel:
+    models:
+      "claude-3-opus":
+        cost_per_1k_tokens: 0.012
+        performance_tier: "high"
+        max_tokens: 200000
+        capabilities: ["reasoning", "analysis", "creative"]
+        use_cases: ["research", "complex_analysis", "creative_writing"]
+      
+      "gpt-4o":
+        cost_per_1k_tokens: 0.004
+        performance_tier: "high"
+        max_tokens: 128000
+        capabilities: ["reasoning", "analysis", "coding", "creative"]
+        use_cases: ["research", "coding", "analysis"]
+
+# Model selection strategies
+selection_strategies:
+  cost_optimized:
+    description: "Choose the cheapest model that meets requirements"
+    priority: ["cost_per_1k_tokens", "performance_tier"]
+  
+  performance_optimized:
+    description: "Choose the best performing model regardless of cost"
+    priority: ["performance_tier", "max_tokens", "capabilities"]
+  
+  balanced:
+    description: "Balance cost and performance"
+    priority: ["performance_tier", "cost_per_1k_tokens"]
+  
+  task_specific:
+    description: "Choose based on task requirements and capabilities"
+    priority: ["use_cases", "capabilities", "performance_tier"]
+
+# Default model selection for different agent types
+agent_defaults:
+  research:
+    strategy: "performance_optimized"
+    preferred_models: ["anthropic/claude-3-opus", "openai/gpt-4o", "google/gemini-pro-1.5"]
+    min_performance_tier: "medium"
+  
+  coding:
+    strategy: "balanced"
+    preferred_models: ["openai/gpt-4o", "meta-llama/llama-3.1-70b-instruct"]
+    min_performance_tier: "medium"
+  
+  creative:
+    strategy: "performance_optimized"
+    preferred_models: ["anthropic/claude-3-opus", "openai/gpt-4o"]
+    min_performance_tier: "medium"
+  
+  general:
+    strategy: "balanced"
+    preferred_models: ["x-ai/grok-4-fast:free", "anthropic/claude-3-sonnet"]
+    min_performance_tier: "low"
