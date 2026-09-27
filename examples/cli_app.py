@@ -14,7 +14,7 @@ def app():
     io=CliUserIO()
     # use the framrwork and make the cli app
     
-    config  = AgentConfig(model="deepseek-v4-flash")
+    config  = AgentConfig(model="stealth/space-bunny-alpha")
 
     flex = Agent(name="flex",config=config)
     flex.apply_skills(flex_skills,skill_registry)
