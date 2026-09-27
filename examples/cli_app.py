@@ -8,6 +8,8 @@ from flexygent.agent import agent_loop
 from flexygent.client import client
 from flexygent.memory.file_store import FileStore
 from flexygent.adapters.cli import CliUserIO
+from flexygent.mcp.config import mcp_config
+from flexygent.mcp.manager import register_mcp_server
 
 def app():
 
@@ -24,7 +26,13 @@ def app():
     conv = Conversation()
     conv.add_message(system_message)
 
-        # # make tools payload 
+    # NEW ADDITION AFTER MCP IMPLEMENTAION
+    # todo add any new mcp config in this using add config function otherwise the default one wil be added
+    for server_config in mcp_config.servers:
+        register_mcp_server(tool_registry,server_config)
+
+
+    # make tools payload 
     tool_filter= flex.get_tool_filter(skill_registry)
     tools= get_tools(tool_registry,tool_filter)
 

@@ -15,8 +15,12 @@ class MCPServerConfig(BaseModel):
 class McpConfig(BaseModel):
     servers: list[MCPServerConfig] = Field(default_factory=list)
 
+    def add_config(self,config:MCPServerConfig):
+        self.servers.append(config)
+        
+
 
 mcp_config = McpConfig(servers=[MCPServerConfig(name="bad-calculator",
                                                 transport ="sse",
-                                                url="http://localhost:8000/mcp",
+                                                url="http://localhost:8001/mcp",
                                                 headers={"Authorization":"Bearer AIFNAWFAW"})])
