@@ -1,5 +1,6 @@
 # cli_app.py
 
+from flexygent.mcp.registry import MCPRegistry
 from flexygent.types import Conversation,AgentConfig
 from flexygent.types import Agent
 from flexygent.skills import skill_registry,flex_skills
@@ -18,22 +19,29 @@ def app():
     
     config  = AgentConfig(model="stealth/space-bunny-alpha")
 
+    # initialize mcp registry
+    mcp_registry = MCPRegistry()
+
+    # connect to all the mcp server
+    for server_config in mcp_config.servers:
+        mcp_registry.connect(server_config,tool_registry)
+
+
+    # crete agent and assign both skill and mcp servers
+
     flex = Agent(name="flex",config=config)
     flex.apply_skills(flex_skills,skill_registry)
+    flex.add_mcp("bad-calculator",mcp_registry)
+
 
     system_message = flex.get_system_message()
 
     conv = Conversation()
     conv.add_message(system_message)
 
-    # NEW ADDITION AFTER MCP IMPLEMENTAION
-    # todo add any new mcp config in this using add config function otherwise the default one wil be added
-    for server_config in mcp_config.servers:
-        register_mcp_server(tool_registry,server_config)
-
 
     # make tools payload 
-    tool_filter= flex.get_tool_filter(skill_registry)
+    tool_filter= flex.get_tool_filter(skill_registry,mcp_registry)
     tools= get_tools(tool_registry,tool_filter)
 
 

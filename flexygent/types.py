@@ -2,6 +2,7 @@ from __future__ import annotations
 from pydantic import BaseModel,Field
 from enum import Enum
 from typing import TYPE_CHECKING
+from flexygent.mcp.registry import MCPRegistry
 from flexygent.prompts.builder import PromptBuilder
 
 if TYPE_CHECKING:
@@ -69,6 +70,8 @@ class Agent(BaseModel):
     builder : PromptBuilder=Field(default_factory = PromptBuilder)
     config:AgentConfig = Field(default_factory = AgentConfig)
     active_skills: list[str] = Field(default_factory=list)
+    active_mcp_servers:list[str] = Field(default_factory=list)
+
 
     def apply_skill(self,skill_name:str,skill_registry:SkillRegistry):
         skill_registry.apply(skill_name,self.builder,self.config)
@@ -106,24 +109,47 @@ class Agent(BaseModel):
         for skill_name in skills:
             self.apply_skill(skill_name,skill_registry)
 
+    
+    def add_mcp(self,server_name:str,mcp_registry:MCPRegistry):
+        """ Add specific mcp to this agent """
+        if server_name not in mcp_registry.server_tool_map:
+            print(f"[Warning] MCP Server '{server_name}' not found in registry. Skipping.")
+            return
+        
+        self.active_mcp_servers.append(server_name)
+
+    def add_mcps(self,server_names:list,mcp_registry:MCPRegistry):
+        """Add multiple mcp servers"""
+        for server_name in server_names:
+            self.add_mcp(server_name,mcp_registry)
+
+
+
 
 
     def get_system_message(self):
         return Message(role=Role.SYSTEM,content=self.builder.build())
     
-    def get_tool_filter(self,skill_registry:SkillRegistry):
+    def get_tool_filter(self,skill_registry:SkillRegistry,mcp_registry=None):
 
-        if not self.active_skills:
-            return None
+
         tools = set()
-
-        for skill_name in self.active_skills:
-            skill = skill_registry.get(skill_name)
-            skill_tools = skill.allowed_tools
-            if skill_tools is None:
-                return None
-            tools.update(skill_tools)
         
-        return list(tools)
+        # 01 add tool from skills
+        if self.active_skills:
+            for skill_name in self.active_skills:
+                skill = skill_registry.get(skill_name)
+                skill_tools = skill.allowed_tools
+                if skill_tools is None:
+                    return None
+                tools.update(skill_tools)
+
+        # 02 add tool from mcp seerver
+        if mcp_registry:
+            for server_name in self.active_mcp_servers:
+                mcp_tools = mcp_registry.get_tool_for_server(server_name)
+                tools.update(mcp_tools)
+
+        return list(tools) if tools else None
 
 
